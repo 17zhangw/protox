@@ -1,0 +1,5 @@
+runs
+__pycache__
+artifacts
+nohup.out
+faiss

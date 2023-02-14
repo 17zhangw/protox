@@ -1,0 +1,2 @@
+ray start --head --port=6379 --num-cpus=40 --dashboard-host="0.0.0.0"
+ray start --address=dev12.db.pdl.local.cmu.edu:6379

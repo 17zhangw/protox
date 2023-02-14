@@ -1,0 +1,12 @@
+[submodule "UDO"]
+	path = UDO
+	url = https://github.com/17zhangw/UDO.git
+[submodule "unitune/UniTune"]
+	path = unitune/UniTune
+	url = https://github.com/17zhangw/UniTune.git
+[submodule "unitune/openbox"]
+	path = unitune/openbox
+	url = https://github.com/Blairruc-pku/open-box-context
+[submodule "Bao"]
+	path = Bao
+	url = https://github.com/17zhangw/BaoForPostgreSQL

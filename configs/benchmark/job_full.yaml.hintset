@@ -1,0 +1,407 @@
+mythril:
+  benchmark: job
+  oltp_workload: false
+
+  query_spec:
+    benchbase: False
+    allow_per_query: True
+    early_workload_kill: True
+    query_directory: "/home/wz2/mythril/queries/job_full"
+    query_order: "/home/wz2/mythril/queries/job_full/order.txt"
+
+  max_num_columns: 12
+  tables:
+    - aka_name
+    - aka_title
+    - cast_info
+    - char_name
+    - comp_cast_type
+    - company_name
+    - company_type
+    - complete_cast
+    - info_type
+    - keyword
+    - kind_type
+    - link_type
+    - movie_companies
+    - movie_info
+    - movie_info_idx
+    - movie_keyword
+    - movie_link
+    - name
+    - person_info
+    - role_type
+    - title
+
+  attributes:
+    aka_name:
+      - id
+      - person_id
+      - name
+      - imdb_index
+      - name_pcode_cf
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    aka_title:
+      - id
+      - movie_id
+      - title
+      - imdb_index
+      - kind_id
+      - production_year
+      - phonetic_code
+      - episode_of_id
+      - season_nr
+      - episode_nr
+      - note
+      - md5sum
+    cast_info:
+      - id
+      - person_id
+      - movie_id
+      - person_role_id
+      - note
+      - nr_order
+      - role_id
+    char_name:
+      - id
+      - name
+      - imdb_index
+      - imdb_id
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    comp_cast_type:
+      - id
+      - kind
+    company_name:
+      - id
+      - name
+      - country_code
+      - imdb_id
+      - name_pcode_nf
+      - name_pcode_sf
+      - md5sum
+    company_type:
+      - id
+      - kind
+    complete_cast:
+      - id
+      - movie_id
+      - subject_id
+      - status_id
+    info_type:
+      - id
+      - info
+    keyword:
+      - id
+      - keyword
+      - phonetic_code
+    kind_type:
+      - id
+      - kind
+    link_type:
+      - id
+      - link
+    movie_companies:
+      - id
+      - movie_id
+      - company_id
+      - company_type_id
+      - note
+    movie_info:
+      - id
+      - movie_id
+      - info_type_id
+      - info
+      - note
+    movie_info_idx:
+      - id
+      - movie_id
+      - info_type_id
+      - info
+      - note
+    movie_keyword:
+      - id
+      - movie_id
+      - keyword_id
+    movie_link:
+      - id
+      - movie_id
+      - linked_movie_id
+      - link_type_id
+    name:
+      - id
+      - name
+      - imdb_index
+      - imdb_id
+      - gender
+      - name_pcode_cf
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    person_info:
+      - id
+      - person_id
+      - info_type_id
+      - info
+      - note
+    role_type:
+      - id
+      - role
+    title:
+      - id
+      - title
+      - imdb_index
+      - kind_id
+      - production_year
+      - imdb_id
+      - phonetic_code
+      - episode_of_id
+      - season_nr
+      - episode_nr
+      - series_years
+      - md5sum
+
+  # Additional table level knobs.
+  # Format:
+  #   <tbl_name>:
+  #     <Knob Specification 0>
+  #     <Knob Specification 1>
+  #     ...
+  table_level_knobs: {}
+
+  # Per-query knobs.
+  # Format:
+  #   <benchbase TransactionType.name>:
+  #     <Knob Specification 0>
+  #     ...
+  per_query_scan_method: True
+  per_query_knobs:
+    Q1:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q2:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q3:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q4:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q5:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q6:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q7:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q8:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q9:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q10:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q11:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q12:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q13:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q14:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q15:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q16:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q17:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q18:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q19:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q20:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q21:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q22:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q23:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q24:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q25:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q26:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q27:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q28:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q29:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q30:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q31:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q32:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q33:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q34:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q35:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q36:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q37:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q38:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q39:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q40:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q41:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q42:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q43:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q44:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q45:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q46:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q47:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q48:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q49:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q50:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q51:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q52:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q53:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q54:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q55:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q56:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q57:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q58:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q59:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q60:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q61:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q62:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q63:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q64:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q65:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q66:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q67:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q68:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q69:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q70:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q71:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q72:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q73:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q74:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q75:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q76:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q77:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q78:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q79:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q80:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q81:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q82:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q83:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q84:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q85:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q86:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q87:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q88:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q89:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q90:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q91:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q92:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q93:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q94:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q95:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q96:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q97:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q98:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q99:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q100:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q101:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q102:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q103:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q104:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q105:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q106:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q107:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q108:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q109:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q110:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q111:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q112:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}
+    Q113:
+      hintset: {type: "magic_hintset_enum_categorical", default: 0}

@@ -1,0 +1,75 @@
+#!/bin/bash
+
+set -ex
+set -o pipefail
+
+# Requires:
+# BAO_DIR
+# QORDER
+# OUTPUT
+# PORT
+# CONFIG
+# SF
+# STREAM
+# BAO_PORT
+
+NOISEPAGE_DIR=/mnt/nvme0n1/wz2/noisepage
+
+python3 scripts/experiments/dsb_sf10/load_dsb.py \
+	--config-file $CONFIG \
+	--sf $SF \
+	--stream $STREAM
+
+/mnt/nvme0n1/wz2/noisepage/pg_ctl stop -D /mnt/nvme0n1/wz2/noisepage/pgdata$PORT || true
+sed -i '$ d' /mnt/nvme0n1/wz2/noisepage/pgdata$PORT/postgresql.auto.conf
+echo "shared_preload_libraries = 'pg_bao'" >> $NOISEPAGE_DIR/pgdata$PORT/postgresql.auto.conf
+/mnt/nvme0n1/wz2/noisepage/pg_ctl start -D $NOISEPAGE_DIR/pgdata$PORT
+
+OUTPUT_BASE=/home/wz2/mythril/$OUTPUT/bao_runs/
+mkdir -p $OUTPUT_BASE
+#rm -rf $OUTPUT_BASE/*
+
+B_ARMS=( 49 )
+B_DURATIONS=( 30 )
+B_PQT=( 30 )
+
+idx=0
+cd $BAO_DIR
+
+for ((i = 0; i < ${#B_ARMS[@]}; i++));
+do
+	DURATION="${B_DURATIONS[i]}"
+	ARMS="${B_ARMS[i]}"
+	PQT="${B_PQT[i]}"
+
+	OUT_LOG=$OUTPUT_BASE/bao_out$idx.log.$PORT
+
+	cd bao_server
+	python3 main.py &
+	#main_pid=$!
+	cd ..
+	sleep 15
+
+	python3 run_queries.py \
+		--qorder "/home/wz2/mythril/queries/dsb_10/${QORDER}.txt" \
+		--duration $DURATION \
+		--port $PORT \
+		--num-arms $ARMS \
+		--per-query-timeout $PQT | tee $OUT_LOG
+
+	#sleep 5
+	##kill -9 $(ps aux | grep '[p]ython3 main.py' | awk '{print $2}')
+	#kill -9 $main_pid
+	#sleep 5
+	#rm -rf ~/mythril/Bao/bao_server/bao_previous_model
+	#rm -rf ~/mythril/Bao/bao_server/bao_default_model
+	#rm -rf ~/mythril/Bao/bao_server/bao.db
+
+	idx=$((idx+1))
+	lsof -ti :$BAO_PORT |xargs kill -9
+done
+
+# Remove previous pgdata5450.
+$NOISEPAGE_DIR/pg_ctl -D $NOISEPAGE_DIR/pgdata$PORT stop || true
+rm -rf $NOISEPAGE_DIR/pgdata$PORT
+rm -rf $NOISEPAGE_DIR/pg.log.$PORT

@@ -1,0 +1,975 @@
+mythril:
+  benchmark: job
+  oltp_workload: false
+
+  query_spec:
+    benchbase: False
+    allow_per_query: True
+    early_workload_kill: True
+    query_directory: "/home/wz2/mythril/queries/job_full"
+    query_order: "/home/wz2/mythril/queries/job_full/order.txt"
+
+  max_num_columns: 12
+  tables:
+    - aka_name
+    - aka_title
+    - cast_info
+    - char_name
+    - comp_cast_type
+    - company_name
+    - company_type
+    - complete_cast
+    - info_type
+    - keyword
+    - kind_type
+    - link_type
+    - movie_companies
+    - movie_info
+    - movie_info_idx
+    - movie_keyword
+    - movie_link
+    - name
+    - person_info
+    - role_type
+    - title
+
+  attributes:
+    aka_name:
+      - id
+      - person_id
+      - name
+      - imdb_index
+      - name_pcode_cf
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    aka_title:
+      - id
+      - movie_id
+      - title
+      - imdb_index
+      - kind_id
+      - production_year
+      - phonetic_code
+      - episode_of_id
+      - season_nr
+      - episode_nr
+      - note
+      - md5sum
+    cast_info:
+      - id
+      - person_id
+      - movie_id
+      - person_role_id
+      - note
+      - nr_order
+      - role_id
+    char_name:
+      - id
+      - name
+      - imdb_index
+      - imdb_id
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    comp_cast_type:
+      - id
+      - kind
+    company_name:
+      - id
+      - name
+      - country_code
+      - imdb_id
+      - name_pcode_nf
+      - name_pcode_sf
+      - md5sum
+    company_type:
+      - id
+      - kind
+    complete_cast:
+      - id
+      - movie_id
+      - subject_id
+      - status_id
+    info_type:
+      - id
+      - info
+    keyword:
+      - id
+      - keyword
+      - phonetic_code
+    kind_type:
+      - id
+      - kind
+    link_type:
+      - id
+      - link
+    movie_companies:
+      - id
+      - movie_id
+      - company_id
+      - company_type_id
+      - note
+    movie_info:
+      - id
+      - movie_id
+      - info_type_id
+      - info
+      - note
+    movie_info_idx:
+      - id
+      - movie_id
+      - info_type_id
+      - info
+      - note
+    movie_keyword:
+      - id
+      - movie_id
+      - keyword_id
+    movie_link:
+      - id
+      - movie_id
+      - linked_movie_id
+      - link_type_id
+    name:
+      - id
+      - name
+      - imdb_index
+      - imdb_id
+      - gender
+      - name_pcode_cf
+      - name_pcode_nf
+      - surname_pcode
+      - md5sum
+    person_info:
+      - id
+      - person_id
+      - info_type_id
+      - info
+      - note
+    role_type:
+      - id
+      - role
+    title:
+      - id
+      - title
+      - imdb_index
+      - kind_id
+      - production_year
+      - imdb_id
+      - phonetic_code
+      - episode_of_id
+      - season_nr
+      - episode_nr
+      - series_years
+      - md5sum
+
+  # Additional table level knobs.
+  # Format:
+  #   <tbl_name>:
+  #     <Knob Specification 0>
+  #     <Knob Specification 1>
+  #     ...
+  table_level_knobs: {}
+
+  # Per-query knobs.
+  # Format:
+  #   <benchbase TransactionType.name>:
+  #     <Knob Specification 0>
+  #     ...
+  per_query_scan_method: False
+
+  per_query_knob_gen: {}
+
+  per_query_knobs:
+    Q1:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q2:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q3:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q4:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q5:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q6:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q7:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q8:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q9:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q10:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q11:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q12:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q13:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q14:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q15:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q16:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q17:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q18:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q19:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q20:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q21:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q22:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q23:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q24:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q25:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q26:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q27:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q28:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q29:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q30:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q31:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q32:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q33:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q34:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q35:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q36:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q37:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q38:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q39:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q40:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q41:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q42:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q43:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q44:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q45:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q46:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q47:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q48:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q49:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q50:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q51:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q52:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q53:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q54:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q55:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q56:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q57:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q58:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q59:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q60:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q61:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q62:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q63:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q64:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q65:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q66:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q67:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q68:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q69:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q70:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q71:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q72:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q73:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q74:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q75:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q76:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q77:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q78:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q79:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q80:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q81:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q82:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q83:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q84:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q85:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q86:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q87:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q88:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q89:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q90:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q91:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q92:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q93:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q94:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q95:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q96:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q97:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q98:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q99:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q100:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q101:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q102:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q103:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q104:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q105:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q106:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q107:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q108:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q109:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q110:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q111:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q112:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    Q113:
+      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
