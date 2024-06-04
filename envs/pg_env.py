@@ -273,7 +273,6 @@ class PostgresEnv(gym.Env):
         return self._start_with_config_changes(conf_changes=conf_changes, timeout=timeout)
 
     def _restore_last_snapshot(self):
-        assert self.horizon > 1
         assert self.oltp_workload
         assert Path(f"{self.env_spec.postgres_data}.tgz").exists()
         self._shutdown_postgres()
@@ -476,7 +475,8 @@ class PostgresEnv(gym.Env):
                 self.logger.record("instr_time/workload_eval", time.time() - start_time)
         else:
             # Illegal configuration.
-            logging.info("Found illegal configuration: %s", config_changes)
+            logging.info("Found illegal configuration: %s. %s", config_changes, config_changes)
+            self.action_space.flag_illegal(action, self.connection)
 
         if self.oltp_workload and self.horizon > 1:
             # If horizon = 1, then we're going to reset anyways. So easier to just untar the original archive.
@@ -521,12 +521,14 @@ class PostgresEnv(gym.Env):
 
     def shift_state(self, config_changes, sql_commands, dump_page_cache=False, ignore_error=False):
         def attempt_checkpoint(conn_str):
-            try:
-                with psycopg.connect(conn_str, autocommit=True, prepare_threshold=None) as conn:
-                    conn.execute("CHECKPOINT")
-            except psycopg.OperationalError as e:
-                logging.debug(f"[attempt_checkpoint]: {e}")
-                time.sleep(5)
+            while True:
+                try:
+                    with psycopg.connect(conn_str, autocommit=True, prepare_threshold=None) as conn:
+                        conn.execute("CHECKPOINT")
+                    break
+                except psycopg.OperationalError as e:
+                    logging.debug(f"[attempt_checkpoint]: {e}")
+                    time.sleep(5)
 
         shift_start = time.time()
         # First enforce the SQL command changes.
@@ -534,13 +536,14 @@ class PostgresEnv(gym.Env):
             logging.info(f"Executing {sql} [{i+1}/{len(sql_commands)}]")
             try:
                 ret, stdout, stderr = self.__execute_psql(sql)
-                if ret == -1:
-                    print(stdout, stderr, flush=True)
-                    assert "index row requires" in stderr or "canceling statement" in stderr
-                    attempt_checkpoint(self.env_spec.connection)
-                    return False
+                if not ignore_error:
+                    if ret == -1:
+                        print(stdout, stderr, flush=True)
+                        assert "index row requires" in stderr or "canceling statement" in stderr
+                        attempt_checkpoint(self.env_spec.connection)
+                        return False
 
-                assert ret == 0, print(stdout, stderr)
+                    assert ret == 0, print(stdout, stderr)
             except ProcessExecutionError as e:
                 if not ignore_error:
                     message = str(e)

@@ -161,5 +161,7 @@ mythril:
   per_query_select_parallel: False
   index_space_aux_type: False
   index_space_aux_include: False
+  index_space_aux_brin: False
+  index_space_aux_md: False
   per_query_knob_gen: {}
   per_query_knobs: {}

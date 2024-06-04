@@ -6,8 +6,8 @@ mythril:
     benchbase: False
     allow_per_query: True
     early_workload_kill: True
-    query_directory: "/home/wz2/mythril/queries/dsb"
-    query_order: "/home/wz2/mythril/queries/dsb/d_order.txt"
+    query_directory: "/home/wz2/mythril/queries/dsb_revise"
+    query_order: "/home/wz2/mythril/queries/dsb_revise/d_order.txt"
     tbl_include_subsets_prune: True
 
     tbl_fold_subsets: True
@@ -501,6 +501,8 @@ mythril:
   table_level_knobs: {}
 
   index_space_aux_type: False
+  index_space_aux_brin: False
+  index_space_aux_md: False
   index_space_aux_include: False
 
   # Per-query knobs.
@@ -512,16 +514,15 @@ mythril:
   per_query_select_parallel: False
   per_query_knobs: {}
   per_query_knob_gen:
-      enable_parallel_append: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_parallel_hash: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_material:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_gathermerge: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_hashagg:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_sort:        {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      enable_seqscan:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
-      parallel_leader_participation: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_bitmapscan:  {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_gathermerge: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_hashagg:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_indexonlyscan: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_indexscan:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_material:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_mergejoin:   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_parallel_hash: {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_seqscan:     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    enable_sort:        {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}

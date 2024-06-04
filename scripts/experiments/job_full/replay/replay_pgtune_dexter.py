@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Replay")
     parser.add_argument("--bao-file", default=None)
     parser.add_argument("--bao-config-file", default=None)
+    parser.add_argument("--bao-prior-file", default=None)
     parser.add_argument("--num-samples", type=int, default=3)
     parser.add_argument("--workload-timeout", type=int, default=600)
     parser.add_argument("--sample-interval", type=int, default=900)
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
     if args.bao_file is not None:
         # quarter hour interval.
-        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval)
+        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval, prior_file=args.bao_prior_file)
     else:
         with open("out.txt", "w") as f:
             for _ in range(3):

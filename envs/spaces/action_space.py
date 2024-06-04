@@ -1,4 +1,5 @@
 import time
+import logging
 import torch
 import numpy as np
 import itertools
@@ -173,12 +174,14 @@ class ActionSpace(spaces.Tuple):
         for proto in protos:
             # Figure out the neighbors for each subspace.
             envs_neighbors = []
+            embed_neighbors = []
             start_time = time.time()
             for i, s in enumerate(self.spaces):
                 # Note that subproto is the "action embedding" from the context of
                 # the embedded actor-critic like architecutre.
                 subproto = proto[(self.space_dims[i-1] if i > 0 else 0):self.space_dims[i]]
                 envs = s.search_embedding_neighborhood(subproto, neighbor_parameters)
+                logging.info(f"Processing {type(s)} yielded {len(envs)} neighbors.")
 
                 if random:
                     # Draw a random action.
@@ -186,18 +189,38 @@ class ActionSpace(spaces.Tuple):
                     envs = [envs[rand_idx]]
 
                 envs_neighbors.append(envs)
+
+                # Project it now rather than wait for later.
+                embed_neighbors.append(s._env_to_embedding(envs))
+
             search_times.append(time.time() - start_time)
             start_time = time.time()
 
+            slot_1 = len(envs_neighbors[-1])
             # Cartesian product itself is naturally in the joint space.
             envs_neighbors = [l for l in itertools.product(*envs_neighbors)]
+            embed_neighbors = list(map(lambda mg: np.concatenate(mg), itertools.product(*embed_neighbors)))
             product_times.append(time.time() - start_time)
-            embed_neighbors = self.actor_action_embedding(envs_neighbors)
 
             assert len(envs_neighbors) > 0
             env_acts.extend(envs_neighbors)
             emb_acts.extend(embed_neighbors)
             ndims.append(len(envs_neighbors))
+
+            def check_eq(envs_idx, embed_idx):
+                test_env = envs_neighbors[envs_idx]
+                test_env_embed = self.actor_action_embedding(test_env)[0]
+                if not bool(np.isclose(test_env_embed, embed_neighbors[embed_idx], rtol=1e-03, atol=1e-03).all()):
+                    print(test_env, test_env_embed, embed_neighbors[embed_idx])
+                    assert False
+
+            # Lightweight sanity check.
+            assert len(envs_neighbors) == len(embed_neighbors)
+            if len(envs_neighbors) > 1:
+                check_eq(0, 0)
+                check_eq(1, 1)
+                check_eq(len(envs_neighbors) - 1, len(embed_neighbors) - 1)
+                check_eq(slot_1, slot_1)
 
         return env_acts, np.array(emb_acts), np.array(ndims)
 
@@ -209,6 +232,9 @@ class ActionSpace(spaces.Tuple):
             env_act = [env_act]
         embed_cmps = [np.array(s._env_to_embedding([a[i] for a in env_act])) for i, s in enumerate(self.spaces)]
         return np.concatenate(embed_cmps, axis=1)
+
+    def flag_illegal(self, env_act, connection):
+        _ = [s._flag_illegal(env_act[i], connection) for i, s in enumerate(self.spaces)]
 
     def random_embed_action(self, num_action=1):
         subspaces = [space._random_embed_action(num_action) for space in self.spaces]

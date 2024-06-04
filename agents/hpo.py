@@ -54,6 +54,8 @@ def _mutate_common_config(logdir, mythril_dir, hpo_config, mythril_args):
     benchmark_config["mythril"]["per_query_scan_method"] = hpo_config["mythril_per_query_scan_method"]
     benchmark_config["mythril"]["per_query_select_parallel"] = hpo_config["mythril_per_query_select_parallel"]
     benchmark_config["mythril"]["index_space_aux_type"] = hpo_config["mythril_index_space_aux_type"]
+    benchmark_config["mythril"]["index_space_aux_brin"] = hpo_config["mythril_index_space_aux_brin"]
+    benchmark_config["mythril"]["index_space_aux_md"] = hpo_config["mythril_index_space_aux_md"]
     benchmark_config["mythril"]["index_space_aux_include"] = hpo_config["mythril_index_space_aux_include"]
     benchmark_config["mythril"]["query_spec"] = hpo_config["mythril_query_spec"]
 

@@ -28,6 +28,14 @@ def parse_access_method(explain_data):
 
         if "Alias" in data:
             sub_data[data["Alias"]] = data["Node Type"]
+
+        if "Node Type" in data:
+            # Propagate the Bitmap Index Scan => upwards.
+            if data["Node Type"] == "Bitmap Heap Scan":
+                assert "Plans" in data and len(data["Plans"]) > 0
+                if data["Plans"][0]["Node Type"] == "Bitmap Index Scan":
+                    sub_data[data["Alias"]] = "Bitmap Index Scan"
+
         return sub_data
     return recurse(explain_data)
 

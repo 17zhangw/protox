@@ -216,9 +216,12 @@ def fetch_server_knobs(connection, tables, knobs, workload=None):
                 if knob.query_name in q_ams:
                     alias = knob.knob_name.split("_scanmethod")[0]
                     if alias in q_ams[knob.query_name]:
-                        val = 1 if "Index" in q_ams[knob.query_name][alias] else 0
+                        val = 1 if ("Index" in q_ams[knob.query_name][alias] or "Bitmap Index" in q_ams[knob.query_name][alias]) else 0
                         knob_targets[knobname] = val
                         installed = True
+
+                        if "Bitmap" in q_ams[knob.query_name][alias]:
+                            logging.debug(f"Regressing {knobname} from {q_ams[knob.query_name][alias]} to {val}")
 
                 if not installed:
                     knob_targets[knobname] = 0.
@@ -255,6 +258,7 @@ def fetch_server_indexes(connection, tables):
             SELECT
                 t.relname as table_name,
                 i.relname as index_name,
+                i.reloptions as index_options,
                 am.amname as index_type,
                 a.attname as column_name,
                 array_position(ix.indkey, a.attnum) pos,
@@ -273,6 +277,23 @@ def fetch_server_indexes(connection, tables):
         for record in records:
             relname = record["table_name"]
             idxname = record["index_name"]
+            idxoptions = record["index_options"]
+
+            aux_md = []
+            if idxoptions is not None:
+                for opt in idxoptions:
+                    if "=" in opt and "fillfactor" in opt:
+                        aux_md.append({
+                            100: 1,
+                            90: 0,
+                        }[int(opt.split("fillfactor=")[-1])])
+                    elif "=" in opt and "pages_per_range" in opt:
+                        aux_md.append({
+                            64: -1,
+                            128: 0,
+                            256: 1,
+                        }[int(opt.split("pages_per_range=")[-1])])
+
             colname = record["column_name"]
             index_type = record["index_type"]
             is_include = record["is_include"]
@@ -285,6 +306,7 @@ def fetch_server_indexes(connection, tables):
                         "index_type": index_type,
                         "columns": [],
                         "include": [],
+                        "aux_md": aux_md,
                     }
 
                 if is_include:

@@ -251,12 +251,18 @@ class StructureStateSpace(spaces.Dict):
 
                 aux_index_type = None
                 aux_include = None
+                aux_md = None
+                is_aux_md = self.action_space.get_index_space().index_space_aux_md
                 if self.action_space.get_index_space().index_space_aux_type_dim > 0:
                     # Boink the index type.
                     index_val = torch.tensor(env_acts[:, 0]).view(env_acts.shape[0], -1)
-                    index_type = torch.zeros(index_val.shape[0], 2, dtype=torch.int64)
+                    index_type = torch.zeros(index_val.shape[0], self.action_space.get_index_space().index_space_aux_type_dim, dtype=torch.int64)
                     aux_index_type = index_type.scatter_(1, index_val, 1).type(torch.float32)
                     env_acts = env_acts[:, 1:]
+
+                if is_aux_md > 0:
+                    aux_md = torch.tensor(env_acts[:, -is_aux_md:])
+                    env_acts = env_acts[:, :-is_aux_md]
 
                 if self.action_space.get_index_space().index_space_aux_include > 0:
                     aux_include = torch.tensor(env_acts[:, -self.action_space.get_index_space().index_space_aux_include:]).float()
@@ -271,7 +277,9 @@ class StructureStateSpace(spaces.Dict):
                 if aux_index_type is not None:
                     latents = torch.concat([aux_index_type, latents], dim=1)
                 if aux_include is not None:
-                    latents = torch.concat([aux_include, latents], dim=1)
+                    latents = torch.concat([latents, aux_include], dim=1)
+                if aux_md is not None:
+                    latents = torch.concat([latents, aux_md], dim=1)
 
                 if self.div:
                     index_state = (latents.sum(dim=0) / len(indexes)).numpy().flatten()

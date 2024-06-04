@@ -269,7 +269,7 @@ class Workload(object):
                 return False
         return True
 
-    def _execute_workload(self, connection, workload_timeout, ql_knobs={}, output_file=None, workload_qdir=None, env_spec=None, disable_pg_hint=False, blocklist=[]):
+    def _execute_workload(self, connection, workload_timeout, ql_knobs={}, output_file=None, workload_qdir=None, env_spec=None, disable_pg_hint=False, forcescans={}, blocklist=[], qid_runtimes=None, cost_only=False):
         # Get the knobs.
         real_knobs = {}
         if env_spec is not None:
@@ -300,7 +300,7 @@ class Workload(object):
 
         for qid in actual_order:
             queries = actual_queries[qid]
-            if any([b in actual_sql_files[qid] for b in blocklist]):
+            if len(blocklist) > 0 and any([b in actual_sql_files[qid] for b in blocklist]):
                 continue
 
             for sql_type, query in queries:
@@ -320,28 +320,62 @@ class Workload(object):
                         disable = ";".join([f"SET {knob.knob_name} = OFF" for (knob, value) in qid_knobs if value == 0])
                         connection.execute(disable)
 
+                        if qid in forcescans:
+                            tbl_aliases = []
+                            for _, aset in self.query_aliases[qid].items():
+                                tbl_aliases.extend(aset)
+
+                            if forcescans[qid] == "index":
+                                query = "/*+ " + " ".join([f"NoSeqScan({t})" for t in tbl_aliases]) + " Set(enable_mergejoin OFF) Set(enable_hashjoin OFF) */ " + query
+                            elif forcescans[qid] == "indexbase":
+                                query = "/*+ " + " ".join([f"NoSeqScan({t})" for t in tbl_aliases]) + " */ " + query
+                            else:
+                                assert forcescans[qid] == "seq"
+                                query = "/*+ " + " ".join([f"SeqScan({t})" for t in tbl_aliases]) + " Set(enable_nestloop OFF) */ " + query
+
                         undo_disable  = ";".join([f"SET {knob.knob_name} = ON" for (knob, value) in qid_knobs if value == 0])
                     else:
-                        query = "/*+ " + " ".join([knob.resolve_per_query_knob(value, all_knobs=real_knobs) for (knob, value) in qid_knobs]) + " */" + query
+                        if cost_only:
+                            qid_knobs = [(k, v) for (k, v) in qid_knobs if k.knob_name not in ["seq_page_cost", "random_page_cost"]]
 
+                        options = [knob.resolve_per_query_knob(value, all_knobs=real_knobs) for (knob, value) in qid_knobs]
+                        if qid in forcescans:
+                            tbl_aliases = []
+                            for _, aset in self.query_aliases[qid].items():
+                                tbl_aliases.extend(aset)
 
-                    if output_file is not None:
-                        query = "EXPLAIN (ANALYZE, TIMING OFF) " + query
+                            if forcescans[qid] == "index":
+                                options += [f"IndexOnlyScan({t})" for t in tbl_aliases]
+                            else:
+                                assert forcescans[qid] == "seq"
+                                options += [f"SeqScan({t})" for t in tbl_aliases]
+                        query = "/*+ " + " ".join(options) + " */" + query
 
-                    _, qid_runtime, timeout, explain = acquire_metrics_around_query("", None, connection, qid, query, time_left, metrics=False)
+                    if cost_only:
+                        query = "EXPLAIN (FORMAT JSON) " + query
+                        explain = [r for r in connection.execute(query)][0][0][0]
+                        workload_time += explain["Plan"]["Total Cost"]
+                    else:
+                        if output_file is not None:
+                            query = "EXPLAIN (ANALYZE, TIMING OFF) " + query
 
-                    if disable_pg_hint:
-                        # Now undo the session.
-                        connection.execute(undo_disable)
+                        _, qid_runtime, timeout, explain = acquire_metrics_around_query("", None, connection, qid, query, time_left, metrics=False)
+                        if disable_pg_hint and undo_disable is not None:
+                            # Now undo the session.
+                            connection.execute(undo_disable)
 
-                    time_left -= (qid_runtime / 1e6)
-                    workload_time += (qid_runtime / 1e6)
+                            if qid_runtimes is not None:
+                                # Log the qid_runtimes.
+                                qid_runtimes[qid] = (qid_runtime / 1e6)
+
+                        time_left -= (qid_runtime / 1e6)
+                        workload_time += (qid_runtime / 1e6)
 
                     if output_file is not None and explain is not None:
                         pqkk = [(knob.name(), val) for (knob, val) in qid_knobs]
                         output_file.write(f"{qid}\n")
                         output_file.write(f"PerQuery: {pqkk}\n")
-                        output_file.write("\n".join(explain))
+                        output_file.write(json.dumps(explain))
                         output_file.write("\n")
                         output_file.write("\n")
         return workload_time
@@ -425,20 +459,48 @@ class Workload(object):
 
                     if self.workload_eval_mode == "all_enum" and len(qid_knobs) > 0 and any([is_knob_enum(k) for k, _ in qid_knobs]):
                         # Run the "complete" binary version.
+                        inlj_enums = []
                         top_enums = []
                         bottom_enums = []
                         for k, v in qid_knobs:
                             if not is_knob_enum(k):
                                 top_enums.append((k, v))
-                                bottom_enums.append((k, v))
+                                #bottom_enums.append((k, v))
+
+                                if k.knob_name == "enable_hashjoin":
+                                    inlj_enums.append((k, 0))
+                                    bottom_enums.append((k, 1))
+                                elif k.knob_name == "enable_mergejoin":
+                                    inlj_enums.append((k, 0))
+                                    bottom_enums.append((k, 1))
+                                elif k.knob_name == "enable_nestloop":
+                                    inlj_enums.append((k, 1))
+                                    bottom_enums.append((k, 0))
+                                else:
+                                    dknob = [(dk, dv) for dk, dv in qid_default if k.name() == dk.name()]
+                                    assert len(dknob) > 0
+                                    inlj_enums.append((k, dknob[0][1]))
+                                    bottom_enums.append((k, dknob[0][1]))
                             elif is_binary_enum(k):
                                 top_enums.append((k, 1))
+                                assert "scanmethod" in k.knob_name
+                                inlj_enums.append((k, 1))
                                 bottom_enums.append((k, 0))
                             else:
                                 top_enums.append((k, int(k.sample_uniform())))
+                                inlj_enums.append((k, int(k.sample_uniform())))
                                 bottom_enums.append((k, int(k.sample_uniform())))
-                        runs.append(("TopEnum", top_enums))
-                        runs.append(("BottomEnum", bottom_enums))
+
+                        assert len(runs) > 0
+                        # Make sure that INLJEnum is not the same as something before.
+                        if all([[v[1] for v in exist_run] != [v[1] for v in inlj_enums] for exist_run in runs]):
+                            runs.append(("INLJEnum", inlj_enums))
+
+                        if all([[v[1] for v in exist_run] != [v[1] for v in top_enums] for exist_run in runs]):
+                            runs.append(("TopEnum", top_enums))
+
+                        if all([[v[1] for v in exist_run] != [v[1] for v in bottom_enums] for exist_run in runs]):
+                            runs.append(("BottomEnum", bottom_enums))
 
                     if self.workload_eval_mode == "default":
                         # No flags.
@@ -496,7 +558,7 @@ class Workload(object):
 
                 assert qid not in qid_runtime_data
                 assert best_metric is not None or (not need_metric)
-                assert runs_idx[0] in ["TopEnum", "BottomEnum", "Default", "PrevDual", "GlobalDual", "PerQuery", "PerQueryInverse"]
+                assert runs_idx[0] in ["TopEnum", "INLJEnum", "TopEnum", "BottomEnum", "Default", "PrevDual", "GlobalDual", "PerQuery", "PerQueryInverse"]
                 if reset_eval:
                     assert runs_idx[0] in ["PrevDual", "PerQuery"]
                 qid_runtime_data[qid] = {
@@ -525,7 +587,7 @@ class Workload(object):
                     for knob, val in inverse_knobs:
                         action[env_spec.action_space.knob_space_ind][knob.name()] = val
                     mutilated = action
-                elif runs_idx[0] in ["TopEnum", "BottomEnum"] and not best_timeout:
+                elif runs_idx[0] in ["INLJEnum", "TopEnum", "BottomEnum"] and not best_timeout:
                     assert not reset_eval
                     enum_knobs = runs_idx[1]
 

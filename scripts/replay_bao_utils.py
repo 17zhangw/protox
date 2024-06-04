@@ -15,53 +15,6 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-def run_autosteer(env, num_samples, workload_timeout, autosteer_file, benchmark_config_path):
-    with open(benchmark_config_path, "r") as f:
-        qo = yaml.safe_load(f)["mythril"]["query_spec"]["query_order"]
-    with open(qo, "r") as f:
-        sql_mapping = {}
-        for l in f:
-            c = l.strip().split(",")
-            sql_mapping[c[1]] = c[0]
-
-    env.action_space.get_knob_space().reset(connection=env.connection, workload=env.workload)
-    knob_state = env.action_space.get_knob_space().get_state(None)
-    ql_knobs = env.action_space.get_knob_space().get_query_level_knobs(knob_state)
-
-    changes = {}
-    with open(autosteer_file) as f:
-        for line in f:
-            line = line.strip()
-            parts = line.split(" ")
-            assert len(parts) == 3
-            changes[parts[0]] = parts[1]
-
-    for query, hintset in changes.items():
-        sets = [h.strip() for h in hintset.split(",")]
-        sets = [s for s in sets if len(s) > 0]
-
-        qid = query.split("/")[-1]
-        qid = sql_mapping[qid]
-        for setopt in sets:
-            full_opt = f"{qid}_{setopt}"
-            assert full_opt in ql_knobs, print(full_opt)
-            ql_knobs[full_opt] = (ql_knobs[full_opt][0], 0)
-
-    # Reboot and dump page cache.
-    env._start_with_config_changes(conf_changes=None, dump_page_cache=True)
-    collect_samples = []
-
-    for sample_idx in range(num_samples):
-        collect_samples.append(env.workload._execute_workload(
-            connection=env.connection,
-            workload_timeout=workload_timeout,
-            ql_knobs=ql_knobs,
-            env_spec=env.env_spec))
-
-        if collect_samples[-1] == workload_timeout:
-            break
-
-    return collect_samples
 
 def read_next_config(it, current):
     if "CHECKING" in current:
@@ -90,10 +43,23 @@ def read_next_config(it, current):
     return config, config_time, current, False
 
 
-def run_bao(env, samples, timeout, bao_file, benchmark_config_path, check_unit_sec, blocklist=[]):
+def run_bao(env, samples, timeout, bao_file, benchmark_config_path, check_unit_sec, prior_file=None, blocklist=[]):
     orig_timeout = timeout
     run_data = []
     current_step = 0
+
+    prior_qid = {}
+    if prior_file is not None:
+        prior_df = pd.read_csv(prior_file)
+        for t in prior_df.itertuples():
+            if t.qid.startswith("Q"):
+                fival = float(t.forceidx)
+                fsval = float(t.forceseq)
+                prior_qid[t.qid] = (
+                    min(fival, fsval),
+                    "index" if (fival < fsval) else "seq",
+                    t.idxall if (fival < fsval) else t.seqall,
+                )
 
     start_time = 0
     num_baos = 0
@@ -143,15 +109,21 @@ def run_bao(env, samples, timeout, bao_file, benchmark_config_path, check_unit_s
                     pbar.update(1)
                     continue
 
-                for query, (_, hintset) in seed_config.items():
+                force_scans = {}
+                for query, (etime, hintset) in seed_config.items():
+                    qid = query.split("/")[-1]
+                    qid = sql_mapping[qid]
+                    if len(prior_qid) > 0:
+                        assert qid in prior_qid
+                        if prior_qid[qid][0] < etime:
+                            force_scans[qid] = (prior_qid[qid][1], prior_qid[qid][2])
+
                     if hintset == "(no hint)":
                         continue
 
                     sets = [h.strip() for h in hintset.split(";")]
                     sets = [s for s in sets if len(s) > 0]
 
-                    qid = query.split("/")[-1]
-                    qid = sql_mapping[qid]
                     for setopt in sets:
                         opt = setopt.split("SET ")[-1].split(" TO")[0]
                         full_opt = f"{qid}_{opt}"
@@ -166,7 +138,7 @@ def run_bao(env, samples, timeout, bao_file, benchmark_config_path, check_unit_s
                 else:
                     # Reboot and dump page cache.
                     env._start_with_config_changes(conf_changes=None, dump_page_cache=True)
-                    logging.info(f"Running samples {current_step}")
+                    logging.info(f"Running samples {current_step}. Time: {config_time}")
                     collect_samples = []
 
                     query_runtime = {}
@@ -178,6 +150,7 @@ def run_bao(env, samples, timeout, bao_file, benchmark_config_path, check_unit_s
                             env_spec=env.env_spec,
                             # Don't use pg_hint_plan.
                             disable_pg_hint=True,
+                            forcescans=force_scans,
                             blocklist=blocklist))
 
                         if collect_samples[-1] >= orig_timeout:

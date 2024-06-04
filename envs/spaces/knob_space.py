@@ -358,3 +358,6 @@ class KnobSpace(spaces.Dict):
 
     def generate_delta_action_plan(self, action, **kwargs):
         return self.generate_plan(action, **kwargs)
+
+    def _flag_illegal(self, act, conn):
+        pass

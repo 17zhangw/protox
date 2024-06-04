@@ -66,7 +66,7 @@ def resolve_enum_value(knob, value, all_knobs={}):
         assert "_scanmethod" in knob.knob_name
         tbl = knob.knob_name.split("_scanmethod")[0]
         if value == 1:
-            return f"IndexOnlyScan({tbl})"
+            return f"NoSeqScan({tbl})"
         return f"SeqScan({tbl})"
 
     if knob.knob_type in [SettingType.MAGIC_HINTSET_ENUM_CATEGORICAL]:
@@ -131,8 +131,10 @@ def regress_ams(qid_knobs, access_method, explain):
             assert "_scanmethod" in knob.knob_name
             alias = knob.knob_name.split("_scanmethod")[0]
             if alias in access_method:
-                value = 1 if "Index" in access_method[alias] else 0
+                value = 1 if ("Index" in access_method[alias] or "Bitmap Index" in access_method[alias]) else 0
                 new_qid_knobs.append((knob, value))
+                if "Bitmap" in access_method[alias]:
+                    logging.debug(f"Regressing {knob.name()} from {access_method[alias]} to {value}")
             else:
                 # Log out the missing alias for debugging reference.
                 logging.debug(f"Found missing {alias} in the parsed {access_method}.")
@@ -153,8 +155,10 @@ def regress_qid_knobs(qid_knobs, real_knobs, access_method, explain):
             assert "_scanmethod" in knob.knob_name
             alias = knob.knob_name.split("_scanmethod")[0]
             if alias in access_method:
-                value = 1 if "Index" in access_method[alias] else 0
+                value = 1 if ("Index" in access_method[alias] or "Bitmap Index" in access_method[alias]) else 0
                 global_qid_knobs.append((knob, value))
+                if "Bitmap" in access_method[alias]:
+                    logging.debug(f"Regressing {knob.name()} from {access_method[alias]} to {value}")
             else:
                 # Log out the missing alias for debugging reference.
                 logging.debug(f"Found missing {alias} in the parsed {access_method}.")

@@ -17,21 +17,39 @@ from envs.spaces.real import Real
 def _sample_onehot_subsets(
         action,
         index_space_aux_type,
+        index_space_aux_brin,
         index_space_aux_include,
+        index_space_aux_md,
         rel_metadata=None,
         tables=None,
         tbl_include_subsets=None,
         column_ordinal_mask=None):
 
+    orig_act_len = len(action)
     idx_type = 0
     inc_columns = []
-    if index_space_aux_type and index_space_aux_include > 0:
+    aux_md = []
+    if index_space_aux_type and index_space_aux_include > 0 and index_space_aux_md > 0:
+        tbl_index = action[1]
+        columns = action[2:-index_space_aux_include-index_space_aux_md]
+
+        aux_md = action[-index_space_aux_md:]
+        inc_columns = action[:-index_space_aux_md][-index_space_aux_include:]
+    elif index_space_aux_type and index_space_aux_md > 0:
+        tbl_index = action[1]
+        columns = action[2:-index_space_aux_md]
+        aux_md = action[-index_space_aux_md:]
+    elif index_space_aux_type and index_space_aux_include > 0:
         tbl_index = action[1]
         columns = action[2:-index_space_aux_include]
         inc_columns = action[-index_space_aux_include:]
     elif index_space_aux_type:
         tbl_index = action[1]
         columns = action[2:]
+    elif index_space_aux_md > 0:
+        tbl_index = action[0]
+        columns = action[1:-index_space_aux_md]
+        aux_md = action[-index_space_aux_md:]
     elif index_space_aux_include > 0:
         tbl_index = action[0]
         columns = action[1:-index_space_aux_include]
@@ -46,6 +64,26 @@ def _sample_onehot_subsets(
         columns = [c for c in columns if (c - 1) in column_ordinal_mask or c == 0]
 
     new_candidates = [action]
+    def append(act):
+        assert len(act) == orig_act_len, print(action, act)
+        new_candidates.append(act)
+        if index_space_aux_md > 0:
+            if act[0] == 0:
+                # FILL FACTOR
+                nact = list(copy.deepcopy(act))
+                nact[-1] = 1
+                new_candidates.append(tuple(nact))
+            elif act[0] == 2:
+                # BRIN
+                nact = list(copy.deepcopy(act))
+                nact[-1] = -1
+                new_candidates.append(tuple(nact))
+
+                nact = list(copy.deepcopy(act))
+                nact[-1] = 1
+                new_candidates.append(tuple(nact))
+
+
     for i in range(len(columns)):
         # No more valid indexes to construct.
         if columns[i] == 0:
@@ -55,35 +93,49 @@ def _sample_onehot_subsets(
         new_columns = [0 for _ in range(num_columns)]
         new_columns[:i+1] = columns[:i+1]
 
-        if index_space_aux_type and index_space_aux_include > 0:
+        if index_space_aux_type and index_space_aux_include > 0 and index_space_aux_md > 0:
+            act = (idx_type, tbl_index, *new_columns, *inc_columns, *aux_md)
+        elif index_space_aux_type and index_space_aux_md > 0:
+            act = (idx_type, tbl_index, *new_columns, *aux_md)
+        elif index_space_aux_type and index_space_aux_include > 0:
             act = (idx_type, tbl_index, *new_columns, *inc_columns)
         elif index_space_aux_type:
             act = (idx_type, tbl_index, *new_columns)
+        elif index_space_aux_md > 0:
+            act = (tbl_index, *new_columns, *aux_md)
         elif index_space_aux_include > 0:
             act = (tbl_index, *new_columns, *inc_columns)
         else:
             act = (tbl_index, *new_columns)
-        new_candidates.append(act)
+        append(act)
 
     if index_space_aux_type:
         hash_act = list(copy.deepcopy(action))
         hash_act[0] = 1
         for i in range(3, 2+num_columns):
             hash_act[i] = 0
-        new_candidates.append(tuple(hash_act))
+        append(tuple(hash_act))
+
+        if index_space_aux_brin:
+            brin_act = list(copy.deepcopy(action))
+            brin_act[0] = 2
+            for i in range(3, 2+num_columns):
+                brin_act[i] = 0
+            append(tuple(brin_act))
 
     if index_space_aux_include > 0 and tbl_include_subsets is not None:
         assert "actual" in rel_metadata
         inc_subsets = tbl_include_subsets[tables[tbl_index]]
-        aux_candidates = []
-        for candidate in new_candidates:
+        num_candidates = len(new_candidates)
+        for candidate in range(num_candidates):
+            candidate = new_candidates[candidate]
             if index_space_aux_type:
-                if candidate[0] == 1:
-                    # This is a HASH()
+                if candidate[0] == 1 or candidate[0] == 2:
+                    # This is a HASH() or BRIN()
                     continue
-                columns = candidate[2:-index_space_aux_include]
+                columns = candidate[2:-index_space_aux_include-index_space_aux_md]
             else:
-                columns = candidate[1:-index_space_aux_include]
+                columns = candidate[1:-index_space_aux_include-index_space_aux_md]
 
             names = [rel_metadata[tables[tbl_index]][col-1] for col in columns if col > 0]
             for inc_subset in inc_subsets:
@@ -93,8 +145,11 @@ def _sample_onehot_subsets(
                     flag = [0] * index_space_aux_include
                     for inc_col in inc_cols:
                         flag[rel_metadata["actual"][tables[tbl_index]].index(inc_col)] = 1
-                    aux_candidates.append((*candidate[:-index_space_aux_include], *flag))
-        new_candidates.extend(aux_candidates)
+
+                    if index_space_aux_md > 0:
+                        append((*candidate[:-index_space_aux_include-index_space_aux_md], *flag, *aux_md))
+                    else:
+                        append((*candidate[:-index_space_aux_include], *flag))
     return new_candidates
 
 
@@ -114,9 +169,6 @@ class IndexPolicy(ABC):
         self.max_num_columns = max_num_columns
         self.deterministic = deterministic
 
-        self.num_index_types = 2
-        self.index_types = ["btree", "hash"]
-
     @abstractmethod
     def process_network_output(self, subproto):
         pass
@@ -129,7 +181,7 @@ class IndexPolicy(ABC):
     def act_to_columns(self, act, rel_metadata):
         pass
 
-    def sample_action(self, np_random, action, rel_metadata, sample_num_columns, allow_break=True, column_override=None):
+    def sample_action(self, np_random, action, rel_metadata, sample_num_columns, allow_break=True, column_override=None, omit_dominant=0):
         # Acquire the table index either deterministically or not.
         if self.deterministic:
             tbl_index = torch.argmax(action[:self.num_tables]).item()
@@ -145,7 +197,7 @@ class IndexPolicy(ABC):
             # If we sample columns, sample it.
             use_columns = np_random.integers(1, num_columns + 1)
 
-        return self._sample_action(np_random, tbl_index, action[self.num_tables:], num_columns, use_columns, allow_break=allow_break)
+        return self._sample_action(np_random, tbl_index, action[self.num_tables:], num_columns, use_columns, allow_break=allow_break, omit_dominant=omit_dominant)
 
     @abstractmethod
     def _sample_action(self, np_random, tbl_index, action, num_columns, use_columns, allow_break=True):
@@ -164,22 +216,48 @@ class IndexPolicy(ABC):
 
 
 class OneHotIndexPolicy(IndexPolicy):
-    def __init__(self, tables, max_num_columns, index_space_aux_type, index_space_aux_include, maximize=False):
+    def __init__(self, tables, max_num_columns, index_space_aux_type, index_space_aux_brin, index_space_aux_include, index_space_aux_md, maximize=False):
         super().__init__(tables, max_num_columns, deterministic=maximize)
         self.index_space_aux_type = index_space_aux_type
+        self.index_space_aux_brin = index_space_aux_brin
         self.index_space_aux_include = index_space_aux_include
+        self.index_space_aux_md = index_space_aux_md
+
+        if self.index_space_aux_type and self.index_space_aux_brin:
+            self.num_index_types = 3
+            self.index_types = ["btree", "hash", "brin"]
+        elif self.index_space_aux_type:
+            self.num_index_types = 2
+            self.index_types = ["btree", "hash"]
+        else:
+            self.num_index_types = 1
+            self.index_types = ["btree"]
 
     def act_to_columns(self, act, rel_metadata):
         tbl_name = self.tables[act[1]] if self.index_space_aux_type else self.tables[act[0]]
         idx_type = 0
         inc_cols = []
-        if self.index_space_aux_type and self.index_space_aux_include > 0:
+        aux_md = []
+        if self.index_space_aux_type and self.index_space_aux_include > 0 and self.index_space_aux_md > 0:
+            idx_type = act[0]
+            columns = act[2:-self.index_space_aux_include-self.index_space_aux_md]
+
+            aux_md = act[-self.index_space_aux_md:]
+            inc_cols = act[:-self.index_space_aux_md][-self.index_space_aux_include:]
+        elif self.index_space_aux_type and self.index_space_aux_md > 0:
+            idx_type = act[0]
+            columns = act[2:-self.index_space_aux_md]
+            aux_md = act[-self.index_space_aux_md:]
+        elif self.index_space_aux_type and self.index_space_aux_include > 0:
             idx_type = act[0]
             columns = act[2:-self.index_space_aux_include]
             inc_cols = act[-self.index_space_aux_include:]
         elif self.index_space_aux_type:
             idx_type = act[0]
             columns = act[2:]
+        elif self.index_space_aux_md > 0:
+            columns = act[1:-self.index_space_aux_md]
+            aux_md = act[-self.index_space_aux_md:]
         elif self.index_space_aux_include > 0:
             columns = act[1:-self.index_space_aux_include]
             inc_cols = act[-self.index_space_aux_include:]
@@ -201,9 +279,9 @@ class OneHotIndexPolicy(IndexPolicy):
         else:
             inc_names = []
 
-        return self.index_types[idx_type], tbl_name, col_names, col_idxs, inc_names
+        return self.index_types[idx_type], tbl_name, col_names, col_idxs, inc_names, aux_md
 
-    def _sample_action(self, np_random, tbl_index, action, num_columns, use_columns, allow_break=True):
+    def _sample_action(self, np_random, tbl_index, action, num_columns, use_columns, allow_break=True, omit_dominant=0):
         assert len(action.shape) == 1
         action = action.clone()
         action = action.reshape((self.max_num_columns, self.max_num_columns + 1))
@@ -212,6 +290,11 @@ class OneHotIndexPolicy(IndexPolicy):
         if not allow_break:
             # Zero out the odds.
             action[:, 0] = 0
+
+        for dom in range(omit_dominant):
+            # Strip the dominant based on the "column" index.
+            dom_index = torch.argmax(action[dom]).item()
+            action[:, dom_index] = 0
 
         current_index = 0
         col_indexes = []
@@ -240,8 +323,14 @@ class OneHotIndexPolicy(IndexPolicy):
 
         col_indexes = np.pad(col_indexes, (0, self.max_num_columns - len(col_indexes)), mode="constant", constant_values=0)
         col_indexes = col_indexes.astype(int)
-        if self.index_space_aux_type and self.index_space_aux_include > 0:
+        if self.index_space_aux_type and self.index_space_aux_include > 0 and self.index_space_aux_md > 0:
+            return (0, tbl_index, *col_indexes, *([0]*self.index_space_aux_include), *([0]*self.index_space_aux_md))
+        elif self.index_space_aux_type and self.index_space_aux_md > 0:
+            return (0, tbl_index, *col_indexes, *([0]*self.index_space_aux_md))
+        elif self.index_space_aux_type and self.index_space_aux_include > 0:
             return (0, tbl_index, *col_indexes, *([0]*self.index_space_aux_include))
+        elif self.index_space_aux_md > 0:
+            return (tbl_index, *col_indexes, *([0]*self.index_space_aux_md))
         elif self.index_space_aux_include > 0:
             return (tbl_index, *col_indexes, *([0]*self.index_space_aux_include))
         elif self.index_space_aux_type:
@@ -253,7 +342,9 @@ class OneHotIndexPolicy(IndexPolicy):
         return _sample_onehot_subsets(
                 action,
                 self.index_space_aux_type,
+                self.index_space_aux_brin,
                 self.index_space_aux_include,
+                self.index_space_aux_md,
                 rel_metadata=rel_metadata,
                 tables=self.tables,
                 tbl_include_subsets=tbl_include_subsets,
@@ -268,6 +359,7 @@ class OneHotIndexPolicy(IndexPolicy):
             *([spaces.Discrete(self.max_num_columns + 1, seed=seed)] * self.max_num_columns),
         ]
         aux_include = []
+        aux_md = []
 
         if self.index_space_aux_type:
             aux_type = [spaces.Discrete(self.num_index_types, seed=seed)]
@@ -275,7 +367,10 @@ class OneHotIndexPolicy(IndexPolicy):
         if self.index_space_aux_include > 0:
             aux_include = [Real(low=0.0, high=1.0, seed=seed, dtype=np.float32)] * self.index_space_aux_include
 
-        return aux_type + aux + aux_include
+        if self.index_space_aux_md > 0:
+            aux_md = [Real(low=-1.0, high=1.0, seed=seed, dtype=np.float32)] * self.index_space_aux_md
+
+        return aux_type + aux + aux_include + aux_md
 
     def process_network_output(self, subproto, select=True):
         num_tables = self.num_tables

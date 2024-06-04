@@ -27,6 +27,8 @@ from scripts.replay_bao_utils import run_bao, run_autosteer
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Replay")
     parser.add_argument("--bao-file", default=None)
+    parser.add_argument("--bao-config-file", default=None)
+    parser.add_argument("--bao-prior-file", default=None)
     parser.add_argument("--autosteer-file", default=None)
     parser.add_argument("--num-samples", type=int, default=3)
     parser.add_argument("--workload-timeout", type=int, default=600)
@@ -35,7 +37,7 @@ if __name__ == "__main__":
 
     benchmark_config_path = "configs/benchmark/tpch.yaml"
     if args.bao_file is not None:
-        benchmark_config_path = "configs/benchmark/tpch.yaml.bao"
+        benchmark_config_path = args.bao_config_file
     elif args.autosteer_file is not None:
         benchmark_config_path = "configs/benchmark/tpch.yaml.as"
 
@@ -104,7 +106,7 @@ create view revenue0_PID (supplier_no, total_revenue) as
                 f.write(f"{s}\n")
     elif args.bao_file is not None:
         # quarter hour interval.
-        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval)
+        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval, prior_file=args.bao_prior_file)
     else:
         with open("out.txt", "w") as f:
             for _ in range(3):

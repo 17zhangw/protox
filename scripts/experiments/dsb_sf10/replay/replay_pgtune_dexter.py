@@ -30,7 +30,8 @@ if __name__ == "__main__":
     parser.add_argument("--bao-file", default=None)
     parser.add_argument("--autosteer-file", default=None)
     parser.add_argument("--config-file", default=None)
-    parser.add_argument("--benchmark-config-file", default=None)
+    parser.add_argument("--bao-config-file", default=None)
+    parser.add_argument("--bao-prior-file", default=None)
     parser.add_argument("--num-samples", type=int, default=3)
     parser.add_argument("--workload-timeout", type=int, default=600)
     parser.add_argument("--sample-interval", type=int, default=900)
@@ -38,12 +39,12 @@ if __name__ == "__main__":
     parser.add_argument("--stream", type=int, default=1)
     args = parser.parse_args()
 
-    benchmark_config_path = args.benchmark_config_file
+    benchmark_config_path = args.bao_config_file
 
     spec = Spec(
         agent_type=None,
         seed=0,
-        config_path=args.config_file,
+        config_path=args.config_file if args.config_file else "configs/dsb.yaml",
         benchmark_config_path=benchmark_config_path,
         horizon=0,
         workload_timeout=0)
@@ -219,7 +220,7 @@ if __name__ == "__main__":
                 f.write(f"{s}\n")
     elif args.bao_file is not None:
         # quarter hour interval.
-        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval, blocklist=["query081"])
+        run_bao(env, args.num_samples, args.workload_timeout, args.bao_file, benchmark_config_path, args.sample_interval, prior_file=args.bao_prior_file, blocklist=["query081"])
     else:
         with open("out.txt", "w") as f:
             for _ in range(3):

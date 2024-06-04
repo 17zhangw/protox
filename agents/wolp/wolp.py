@@ -301,10 +301,13 @@ class Wolp(OffPolicyAlgorithm):
                 lscs = replay_data.lscs.reshape(-1, 1)
                 raw_actions = self.env.action_space.adjust_action_lsc(raw_actions, lscs)
 
+                is_aux_md = self.env.action_space.get_index_space().index_space_aux_md
                 if self.env.action_space.get_index_space().index_space_aux_type_dim > 0:
                     raw_actions = th.concat([embeds[:, :self.env.action_space.get_index_space().index_space_aux_type_dim], raw_actions], dim=1)
                 if self.env.action_space.get_index_space().index_space_aux_include > 0:
-                    raw_actions = th.concat([raw_actions, embeds[:, -self.env.action_space.get_index_space().index_space_aux_include:]], dim=1)
+                    raw_actions = th.concat([raw_actions, embeds[:, -is_aux_md-self.env.action_space.get_index_space().index_space_aux_include:-is_aux_md]], dim=1)
+                if is_aux_md > 0:
+                    raw_actions = th.concat([raw_actions, embeds[:, -is_aux_md:]], dim=1)
 
             actor_loss = -self.critic.q1_forward(replay_data.observations, raw_actions).mean()
             actor_grad_losses.append(actor_loss.item())

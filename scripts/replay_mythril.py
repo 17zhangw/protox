@@ -1,3 +1,6 @@
+import numpy as np
+import psycopg
+import shutil
 import datetime
 import logging
 import time
@@ -16,6 +19,7 @@ sys.path.append("/home/wz2/mythril")
 
 from envs.spec import Spec
 from envs.pg_env import PostgresEnv
+from envs.spaces.knob import CategoricalKnob
 
 class DotDict(dict):
     __getattr__ = dict.get
@@ -56,23 +60,29 @@ def gogo(args):
     start_found = False
     filename = "output.log" if args.alternate else "stderr"
     last_evaluation = None
+    prior_eval_state = None
     with open(f"{args.input}/{filename}", "r") as f:
         for line in f:
             if not start_found:
                 if "Baseilne Metric" in line:
                     start_time = parse(line.split("INFO:")[-1].split(" Baseilne Metric")[0])
                     start_found = True
+            elif "Benchmark iteration with metric" in line:
+                prior_eval_state = line
             else:
                 if "mv" in line and "repository" in line:
+                    assert prior_eval_state is not None
+                    metric = float(prior_eval_state.split("Benchmark iteration with metric ")[-1].split(" (")[0])
+                    qtimeout = eval(prior_eval_state.split("q_timeout: ")[-1].split(")")[0])
+
                     repo = eval(line.split("Running ")[-1])[-1]
                     last_folder = repo.split("/")[-1]
                     time_since_start = parse(line.split("DEBUG:")[-1].split(" Running")[0])
                     last_evaluation = time_since_start
                     if (time_since_start - start_time).total_seconds() < args.cutoff * 3600 or args.cutoff == 0:
-                        folders.append(last_folder)
+                        folders.append((last_folder, metric, qtimeout))
 
-    # Only apply threshold if time is less than.
-    threshold_limit = last_evaluation - datetime.timedelta(seconds=int(args.threshold_limit * 3600))
+                    prior_eval_state = None
 
     spec = Spec(
         agent_type=None,
@@ -81,6 +91,51 @@ def gogo(args):
         config_path=f"{args.input}/config.yaml2",
         benchmark_config_path=f"{args.input}/{args.benchmark}.yaml",
         workload_timeout=0)
+
+    # Only apply threshold if time is less than.
+    threshold_limit = last_evaluation - datetime.timedelta(seconds=int(args.threshold_limit * 3600))
+
+    # Get the minimum reward.
+    runs = [(Path(args.input) / "repository" / fold / "run.raw.csv", metric, qtimeout) for fold, metric, qtimeout in folders]
+    runs = [(pd.read_csv(run), m, qt) for run, m, qt in runs]
+    rewards = [(run["Latency (microseconds)"].sum() / 1e6, (run["Latency (microseconds)"].max() / 1e6) == per_query_timeout, m, qt) for run, m, qt in runs]
+    rewards = sorted(rewards, key=lambda x: x[0])
+
+    min_reward = min([r[0] for r in rewards])
+    jump_maximal = None
+    if maximal:
+        for i, (ft, _, lm, _) in enumerate(rewards):
+            assert np.isclose(ft, lm), print(runs[i][0], rewards[i])
+
+        target = [r[1] for r in rewards if r[0] == min_reward]
+        target_qt = [r[3] for r in rewards if r[0] == min_reward]
+        assert len(target) >= 1
+        if target[0]:
+            # Don't use maximal if the min maximal is timed out.
+            # Don't threshold either.
+            threshold = 0
+            maximal = False
+            # Reject maximal only.
+            maximal_only = False
+            logging.warn("Maximal disabled.")
+
+            jms = [(f, m, q) for f, m, q in folders if not q]
+            if len(jms) > 0:
+                jm_min = min([m for _, m, _ in jms])
+                jump_maximal = [f for f, m, _ in jms if m == jm_min][0]
+
+        elif maximal_only and target_qt[0]:
+            # If we are maximal-only but somehow the original logged a timeout (not in run.raw.csv).
+            new_min_reward = None
+            for ft, _, _, qt in rewards:
+                if not qt:
+                    new_min_reward = ft
+                    break
+            assert new_min_reward is not None
+            logging.info(f"Shift maximal from {min_reward} to {new_min_reward}")
+            min_reward = new_min_reward
+        else:
+            logging.info(f"Maximal found: {min_reward}")
 
     env = PostgresEnv(
         spec,
@@ -95,38 +150,23 @@ def gogo(args):
         env.action_space.reset(**{"connection": env.connection, "workload": spec.workload})
         spec.workload.reset()
 
-    # Get the minimum reward.
-    runs = [Path(args.input) / "repository" / fold / "run.raw.csv" for fold in folders]
-    runs = [pd.read_csv(run) for run in runs]
-    rewards = [(run["Latency (microseconds)"].sum() / 1e6, (run["Latency (microseconds)"].max() / 1e6) == per_query_timeout) for run in runs]
-    rewards = sorted(rewards, key=lambda x: x[0])
-    min_reward = min([r[0] for r in rewards])
-    if maximal:
-        target = [r[1] for r in rewards if r[0] == min_reward]
-        assert len(target) >= 1
-        if target[0]:
-            # Don't use maximal if the min maximal is timed out.
-            # Don't threshold either.
-            threshold = 0
-            maximal = False
-            # Reject maximal only.
-            maximal_only = False
-            logging.warn("Maximal disabled.")
-        else:
-            logging.info(f"Maximal found: {min_reward}")
-
     num_lines = 0
     with open(f"{args.input}/{filename}", "r") as f:
         for line in f:
             if "Baseilne Metric" in line:
                 num_lines += 1
-            elif "mv" in line and "repository" in line:
+            elif (maximal and "Found new maximal state with" in line) or (not maximal and ("mv" in line and "repository" in line)):
                 num_lines += 1
 
-    def run_sample(action, timeout):
-        samples = []
+    def run_sample(action, timeout, step_counter):
         # This should reliably check that we are loading the correct knobs...
         ql_knobs = spec.action_space.get_knob_space().get_query_level_knobs(action) if action is not None else {}
+
+        output_file = None
+        if new_args.output_artifacts is not None:
+            output_file = open(new_args.output_artifacts / f"step{step_counter}.plans.new", "w")
+
+        samples = []
         for i in range(args.samples):
             runtime = spec.workload._execute_workload(
                 connection=env.connection,
@@ -140,15 +180,18 @@ def gogo(args):
             if runtime >= args.workload_timeout:
                 break
 
-            if args.samples == 2 and runtime >= timeout:
+            if runtime >= timeout:
                 break
-            elif args.samples > 2 and len(samples) >= 2 and runtime >= timeout:
-                break
+
+        if output_file is not None:
+            output_file.close()
 
         return samples
 
     run_data = []
-    pbar = tqdm.tqdm(total=num_lines)
+    folders = [f for f, _, _ in folders]
+    jump_maximal_seen = False
+    pbar = tqdm.tqdm(total=num_lines, leave=False)
     with open(f"{args.input}/{filename}", "r") as f:
         current_step = 0
 
@@ -172,7 +215,8 @@ def gogo(args):
 
             elif "Selected action: " in line:
                 act = eval(line.split("Selected action: ")[-1])
-                selected_action_knobs = env.action_space.get_knob_space().from_jsonable(act[0])[0]
+                kact = act[0]
+                selected_action_knobs = env.action_space.get_knob_space().from_jsonable(kact)[0]
                 noop_index = "NOOP" in act[1][0]
 
             elif (maximal and ("mv" in line and "repository" in line)):
@@ -182,10 +226,21 @@ def gogo(args):
                 if "mv" in line and "repository" in line:
                     repo = eval(line.split("Running ")[-1])[-1]
                     time_since_start = parse(line.split("DEBUG:")[-1].split(" Running")[0])
+                    pbar.update(1)
                 elif "Found new maximal state with" in line:
                     repo = eval(maximal_repo.split("Running ")[-1])[-1]
                     time_since_start = parse(maximal_repo.split("DEBUG:")[-1].split(" Running")[0])
                     maximal_repo = None
+                    pbar.update(1)
+
+                if jump_maximal is not None and (not jump_maximal_seen):
+                    # Keep skipping until we reach the last maximal.
+                    assert not maximal
+                    if jump_maximal not in repo:
+                        pbar.update(1)
+                        continue
+
+                    jump_maximal_seen = True
 
                 # Get the evaluation reward.
                 reward = pd.read_csv(f"{args.input}/{repo}/run.raw.csv")
@@ -208,7 +263,15 @@ def gogo(args):
                                 index_sqls.append(line)
                             else:
                                 k, v = line.split(" = ")
+                                if not k.startswith("Q"):
+                                    if not np.isclose(selected_action_knobs[k], float(v)):
+                                        print(k, selected_action_knobs[k], float(v), type(selected_action_knobs[k]))
+                                        assert False
                                 knobs[k] = float(v)
+                    # Assert the system knobs are fully loaded.
+                    for k in selected_action_knobs:
+                        if not k.startswith("Q"):
+                            assert k in knobs
 
                     assert len(index_sqls) > 0
                     assert len(knobs) > 0
@@ -226,24 +289,32 @@ def gogo(args):
                         if index_sql in existing_indexes:
                             continue
                         execute_sqls.append(index_sql)
+
                     for index_sql in existing_indexes:
                         if index_sql not in index_sqls:
+                            # Only allow dropping if we are able to back-track or if OLTP.
+                            assert not maximal or args.oltp
                             indexname = index_sql.split("CREATE INDEX")[-1].split(" ON ")[0]
                             execute_sqls.append(f"DROP INDEX IF EXISTS {indexname}")
 
                     if not args.simulated:
                         # Reset snapshot.
                         env.action_space.reset(connection=env.connection, workload=env.workload)
-                        cc, _ = env.action_space.get_knob_space().generate_plan(selected_action_knobs if selected_action_knobs else {})
-                        env.shift_state(cc, execute_sqls, dump_page_cache=True)
+                        cc, _ = env.action_space.get_knob_space().generate_plan(selected_action_knobs)
+                        env.shift_state(cc, execute_sqls, ignore_error=args.ignore_error, dump_page_cache=True)
                     existing_indexes = index_sqls
 
                     if not args.simulated:
                         # Get samples.
-                        run_samples = samples = run_sample(knobs, timeout)
+                        run_samples = samples = run_sample(knobs, timeout, current_step)
                         logging.info(f"Original Runtime: {reward} (timeout {has_timeout}). New Samples: {samples}")
                     else:
                         run_samples = samples = [reward, reward]
+
+                    if args.output_artifacts is not None:
+                        old_plans = Path(f"{args.input}/{repo}/run.plans")
+                        if old_plans.exists():
+                            shutil.copy(old_plans, new_args.output_artifacts / f"step{current_step}.plans.old")
 
                     data = {
                         "step": current_step,
@@ -256,33 +327,26 @@ def gogo(args):
 
                     current_step += 1
 
-                    if (not has_timeout) or (max(run_samples) < timeout):
-                        # Apply a tolerance..
-                        # If we've timed out, only apply threshold only if we've found a strictly better config.
-                        apply_threshold = threshold if time_since_start < threshold_limit else 0
-                        cur_reward_max = reward - apply_threshold
+                    if maximal:
+                        if (not has_timeout) or (max(run_samples) < timeout):
+                            # Apply a tolerance..
+                            # If we've timed out, only apply threshold only if we've found a strictly better config.
+                            apply_threshold = threshold if time_since_start < threshold_limit else 0
+                            cur_reward_max = reward - apply_threshold
 
-                    if max(run_samples) < timeout:
-                        timeout = max(run_samples)
+                    if len(run_samples) > 0:
+                        if max(run_samples) < timeout:
+                            timeout = max(run_samples)
 
                 run_folder = repo.split("/")[-1]
                 if run_folder in folders and run_folder == folders[-1]:
                     break
                 elif maximal_only and reward == min_reward:
                     break
-            pbar.update(1)
 
-        if len(run_data) > 0:
-            data = {
-                "step": current_step,
-                "orig_cost": run_data[-1]["orig_cost"],
-                "time_since_start": -1,
-                "runtime0": run_data[-1]["runtime0"],
-            }
-            run_data.append(data)
-
-    # Output.
-    pd.DataFrame(run_data).to_csv(args.output, index=False)
+    if not Path(args.output).exists():
+        # Output.
+        pd.DataFrame(run_data).to_csv(args.output, index=False)
     env.close()
 
 if __name__ == "__main__":
@@ -302,8 +366,11 @@ if __name__ == "__main__":
     parser.add_argument("--cutoff", type=float, default=0)
     parser.add_argument("--blocklist", default="")
     parser.add_argument("--pg-path", type=str, default="/mnt/nvme0n1/wz2/noisepage")
+    parser.add_argument("--oltp", action="store_true")
 
+    parser.add_argument("--output-artifacts", type=str, default=None)
     parser.add_argument("--output-path", type=str, default="out.csv")
+    parser.add_argument("--ignore-error", action="store_true")
     args = parser.parse_args()
 
     while True:
@@ -325,6 +392,12 @@ if __name__ == "__main__":
             new_args = pargs
             new_args.input = run.parent
             new_args.output = adjust_output
+            if args.output_artifacts is not None:
+                new_args.output_artifacts = run.parent / args.output_artifacts
+                if Path(new_args.output_artifacts).exists():
+                    shutil.rmtree(new_args.output_artifacts)
+                Path(new_args.output_artifacts).mkdir(parents=True, exist_ok=True)
+
             gogo(new_args)
 
         break

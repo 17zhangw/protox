@@ -1,0 +1,45 @@
+Failure # 1 (occurred at 2024-05-16_02-39-40)
+[36mray::TuneOpt.train()[39m (pid=3024520, ip=172.19.146.18, repr=<hpo.TuneOpt object at 0x7fb446772130>)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/ray/tune/trainable/trainable.py", line 368, in train
+    raise skipped from exception_cause(skipped)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/ray/tune/trainable/trainable.py", line 365, in train
+    result = self.step()
+  File "/home/wz2/mythril/hpo.py", line 102, in step
+    data = self.trial.step()
+  File "/home/wz2/mythril/tune.py", line 135, in step
+    self.agent.learn(
+  File "/home/wz2/mythril/agents/wolp/wolp.py", line 353, in learn
+    return super().learn(
+  File "/home/wz2/mythril/agents/common/off_policy_algorithm.py", line 197, in learn
+    rollout = self.collect_rollouts(
+  File "/home/wz2/mythril/agents/common/off_policy_algorithm.py", line 354, in collect_rollouts
+    new_obs, rewards, dones, infos = env.step(actions)
+  File "/home/wz2/mythril/agents/common/vec_env/base_vec_env.py", line 123, in step
+    return self.step_wait()
+  File "/home/wz2/mythril/agents/common/vec_env/vec_check_nan.py", line 41, in step_wait
+    observations, rewards, dones, infos = self.venv.step_wait()
+  File "/home/wz2/mythril/utils/mythril_vec_env_wrapper.py", line 71, in step_wait
+    obs, self.buf_rews[env_idx], terminated, truncated, self.buf_infos[env_idx] = self.envs[env_idx].step(
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/gymnasium/wrappers/normalize.py", line 76, in step
+    obs, rews, terminateds, truncateds, infos = self.env.step(action)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/gymnasium/core.py", line 469, in step
+    observation, reward, terminated, truncated, info = self.env.step(action)
+  File "/home/wz2/mythril/utils/target_state_reset.py", line 50, in step
+    obs, rews, terminateds, truncateds, infos = self.env.step(action)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/gymnasium/wrappers/order_enforcing.py", line 56, in step
+    return self.env.step(action)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/gymnasium/wrappers/env_checker.py", line 49, in step
+    return self.env.step(action)
+  File "/home/wz2/mythril/envs/pg_env.py", line 464, in step
+    success, metric, reward, results, next_state, mutilated, q_timeout, accum_metric = self.workload.execute(
+  File "/home/wz2/mythril/envs/workload.py", line 727, in execute
+    success, mutilated, q_timeout, accum_metric = self._execute_psycopg(env_spec, results, connection, action, timeout, baseline=baseline)
+  File "/home/wz2/mythril/envs/workload.py", line 499, in _execute_psycopg
+    best_metric, best_time, best_timeout, best_explain_data, runs_idx = execute_serial_variations(
+  File "/home/wz2/mythril/envs/workload_utils.py", line 120, in execute_serial_variations
+    metric, runtime, did_timeout, explain_data = acquire_metrics_around_query(
+  File "/home/wz2/mythril/envs/workload_utils.py", line 89, in acquire_metrics_around_query
+    qid_runtime, main_timeout, explain_data = time_query(prefix, connection, qid, query, qtimeout)
+  File "/home/wz2/mythril/envs/workload_utils.py", line 75, in time_query
+    assert False, print(e)
+AssertionError: None

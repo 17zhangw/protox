@@ -167,6 +167,8 @@ if __name__ == "__main__":
         per_query_select_parallel = bb_config["per_query_select_parallel"]
         index_space_aux_type = bb_config["index_space_aux_type"]
         index_space_aux_include = bb_config["index_space_aux_include"]
+        index_space_aux_brin = bb_config["index_space_aux_brin"]
+        index_space_aux_md = bb_config["index_space_aux_md"]
         per_query_knobs = bb_config["per_query_knobs"]
         per_query_knob_gen = bb_config["per_query_knob_gen"]
         query_spec = bb_config["query_spec"]
@@ -186,6 +188,8 @@ if __name__ == "__main__":
     config["mythril_per_query_scan_method"] = per_query_scan_method
     config["mythril_per_query_select_parallel"] = per_query_select_parallel
     config["mythril_index_space_aux_type"] = index_space_aux_type
+    config["mythril_index_space_aux_brin"] = index_space_aux_brin
+    config["mythril_index_space_aux_md"] = index_space_aux_md
     config["mythril_index_space_aux_include"] = index_space_aux_include
     config["mythril_per_query_knob_gen"] = per_query_knob_gen
     config["mythril_query_spec"] = query_spec
@@ -208,6 +212,10 @@ if __name__ == "__main__":
                     config["mythril_per_query_select_parallel"] = per_query_select_parallel
                 if "mythril_index_space_aux_type" not in config:
                     config["mythril_index_space_aux_type"] = index_space_aux_type
+                if "mythril_index_space_aux_brin" not in config:
+                    config["mythril_index_space_aux_brin"] = index_space_aux_brin
+                if "mythril_index_space_aux_md" not in config:
+                    config["mythril_index_space_aux_md"] = index_space_aux_md
                 if "mythril_index_space_aux_include" not in config:
                     config["mythril_index_space_aux_include"] = index_space_aux_include
                 if "mythril_per_query_knob_gen" not in config:

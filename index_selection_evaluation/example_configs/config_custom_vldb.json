@@ -1,0 +1,18 @@
+{
+    "database_system": "postgres",
+    "database_name": "indexselection_tpch___10",
+    "benchmark_name": "Custom_vldb",
+    "algorithms": [
+        {
+            "name": "extend",
+            "parameters": {
+                "budget_MB": [0, 1000, 2000],
+                "max_index_width": 2
+            },
+            "timeout": 300
+        }
+    ],
+    "queries": [
+        "vldb42.sql"
+    ]
+}

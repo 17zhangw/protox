@@ -47,12 +47,18 @@ def gogo(args):
     spec.workload.reset()
 
     num_lines = 0
+    max_lat_mean = 0
     with open(f"{args.input}/tpch_test.log", "r") as f:
         for line in f:
             if "Init record" in line:
                 num_lines += 1
             elif "timestamp" in line:
                 num_lines += 1
+
+            if "timestamp" in line:
+                lat_mean = line.split("time_cost ")[-1].split("space_cost")[0]
+                lat_mean = -float(lat_mean.strip())
+                max_lat_mean = max(max_lat_mean, lat_mean)
     pbar = tqdm.tqdm(total=num_lines)
 
     run_data = []
@@ -79,7 +85,7 @@ def gogo(args):
                 lat_mean = -float(lat_mean.strip())
                 cur_time = parse(line.split("[tpch_test][")[-1].split("]:")[0])
 
-                if lat_mean > cur_reward_max:
+                if lat_mean > cur_reward_max or (lat_mean == max_lat_mean):
                     ts = line.split("timestamp ")[-1]
 
                     with open(f"{args.input}/results/{ts}.auto.conf", "r") as ccfile:
@@ -145,7 +151,8 @@ def gogo(args):
                     run_data.append(data)
                     current_step += 1
 
-                    cur_reward_max = lat_mean
+                    # Threshold is 250tps...
+                    cur_reward_max = lat_mean + 500
 
                 pbar.update(1)
 

@@ -1,0 +1,16 @@
+Failure # 1 (occurred at 2024-05-18_06-18-48)
+Traceback (most recent call last):
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/ray/tune/execution/ray_trial_executor.py", line 1276, in get_next_executor_event
+    future_result = ray.get(ready_future)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 105, in wrapper
+    return func(*args, **kwargs)
+  File "/home/wz2/miniconda3/envs/mythril/lib/python3.9/site-packages/ray/_private/worker.py", line 2382, in get
+    raise value
+ray.exceptions.RayActorError: The actor died unexpectedly before finishing this task.
+	class_name: TuneOpt
+	actor_id: c0aaf07e4e29f6b2f8dc452205000000
+	pid: 2343919
+	namespace: 101a1de0-ca6b-4306-ad9d-1f5953b3b995
+	ip: 172.19.146.15
+The actor is dead because its node has died. Node Id: 8f8b182fbf024dd032dd3b44ad73287cdd74b9ed019a037850a30ed8
+

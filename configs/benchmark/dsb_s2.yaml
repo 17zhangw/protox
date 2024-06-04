@@ -502,6 +502,8 @@ mythril:
 
   index_space_aux_type: False
   index_space_aux_include: True
+  index_space_aux_brin: False
+  index_space_aux_md: False
 
   # Per-query knobs.
   # Format:

@@ -166,7 +166,10 @@ class Spec(object):
                 lsc=lsc,
                 scale_noise_perturb=self.scale_noise_perturb,
                 index_space_aux_type=getattr(self, "index_space_aux_type", False),
-                index_space_aux_include=getattr(self, "index_space_aux_include", False))
+                index_space_aux_brin=getattr(self, "index_space_aux_brin", False),
+                index_space_aux_include=getattr(self, "index_space_aux_include", False),
+                index_space_aux_md=getattr(self, "index_space_aux_md", False),
+            )
             self.max_num_columns = idxs.max_num_columns
         else:
             idxs = None
