@@ -1,7 +1,7 @@
 [database]
 dbtype = postgres
 host = 127.0.0.1
-port = 5460
+port = 5450
 user = admin
 passwd =
 dbname = benchbase
@@ -15,7 +15,7 @@ knob_config_file =  /home/wz2/mythril/unitune/UniTune/knob_configs/postgres.json
 knob_num = 61
 
 # workload name in ['TPCH', 'JOB']
-workload_name = TPCH
+workload_name = DSB
 # workload execution time constraint in sec
 # if we be executing each query, query timeout is workload_timeout / num queries.
 workload_timeout = 600
@@ -23,14 +23,14 @@ per_query_timeout = off
 parallel_query_eval = off
 parallel_max_workers = 0
 # workload queries list
-workload_qlist_file = /home/wz2/mythril/queries/tpch/qorder.txt
+workload_qlist_file = /home/wz2/mythril/queries/dsb_revise/d_qorder.txt
 # workload queries directory
-workload_qdir = /home/wz2/mythril/queries/tpch/
+workload_qdir = /home/wz2/mythril/queries/dsb_revise/
 q_mv_file = 1
 mv_trainset_dir =2
 benchbase_config = /home/wz2/noisepage-pilot/config/behavior/benchbase/tpcc_config.xml
-log_path = logs_ulm0
-result_path = logs_ulm0/results
+log_path = logs
+result_path = logs/results
 
 [tune]
 task_id = tpch_test
@@ -40,8 +40,8 @@ sub_budget = 1200
 context = True
 context_type = im
 context_pca_components = 5
-output_file = logs_ulm0/tpch_test.res
-index_budget = 20000
+output_file = logs/tpch_test.res
+index_budget = 2000000
 arm_method = ts
 ts_use_window = True
 window_size = 7

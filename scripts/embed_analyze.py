@@ -7,7 +7,7 @@ from pathlib import Path
 import json
 import sys
 
-sys.path.append("/home/wz2/mythril")
+sys.path.append(".")
 
 from embeddings.train import _create_vae_model, _fetch_index_parameters
 from envs.spaces.index_space import IndexAction, IndexRepr, IndexSpace

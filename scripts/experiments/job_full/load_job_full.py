@@ -13,7 +13,7 @@ from pathlib import Path
 import logging
 import sys
 
-sys.path.append("/home/wz2/mythril")
+sys.path.append(".")
 
 from envs.spec import Spec
 from envs.repository import Repository
@@ -27,13 +27,10 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Replay")
     parser.add_argument("--config-file", default=None)
-    parser.add_argument("--bao-file", default=None)
     parser.add_argument("--omit-index", action="store_true")
     args = parser.parse_args()
 
     benchmark_config_path = "configs/benchmark/job_full.yaml"
-    if args.bao_file is not None:
-        benchmark_config_path = "configs/benchmark/job_full.yaml.bao"
 
     spec = Spec(
         agent_type=None,

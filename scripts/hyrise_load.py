@@ -1,7 +1,7 @@
 import argparse
 
 import sys
-sys.path.append("/home/wz2/mythril")
+sys.path.append(".")
 from envs.spec import Spec
 from envs.pg_env import PostgresEnv
 

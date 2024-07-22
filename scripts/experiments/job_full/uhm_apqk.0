@@ -1,7 +1,7 @@
 [database]
 dbtype = postgres
 host = 127.0.0.1
-port = 5464
+port = 5435
 user = admin
 passwd =
 dbname = benchbase
@@ -11,8 +11,8 @@ postgres = /mnt/nvme0n1/wz2/noisepage
 benchbase = /home/wz2/noisepage-pilot/artifacts/benchbase
 
 # knob related
-knob_config_file =  /home/wz2/mythril/unitune/UniTune/knob_configs/postgres.json
-knob_num = 61
+knob_config_file =  /home/wz2/mythril/unitune/UniTune/knob_configs/job_pqkk_def.json
+knob_num = 2490
 
 # workload name in ['TPCH', 'JOB']
 workload_name = JOB
@@ -29,8 +29,8 @@ workload_qdir = /home/wz2/mythril/queries/job_full/
 q_mv_file = 1
 mv_trainset_dir =2
 benchbase_config = /home/wz2/noisepage-pilot/config/behavior/benchbase/tpcc_config.xml
-log_path = logs_ulm1
-result_path = logs_ulm1/results
+log_path = logs
+result_path = logs/results
 
 [tune]
 task_id = tpch_test
@@ -40,8 +40,8 @@ sub_budget = 1200
 context = True
 context_type = im
 context_pca_components = 5
-output_file = logs_ulm1/tpch_test.res
-index_budget = 20000
+output_file = logs/tpch_test.res
+index_budget = 2000000
 arm_method = ts
 ts_use_window = True
 window_size = 7

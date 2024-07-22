@@ -5,7 +5,7 @@ import copy
 import os
 import sys
 import argparse
-sys.path.append("/home/wz2/mythril")
+sys.path.append(".")
 from envs.spec import Spec
 from scripts.hyrise_load import hyrise_load
 from sqlalchemy import create_engine, event

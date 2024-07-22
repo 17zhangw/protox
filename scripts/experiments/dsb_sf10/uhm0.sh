@@ -11,8 +11,8 @@ set -o pipefail
 # CONFIG
 
 # Install the correct openbox dependency.
-#pip uninstall -y openbox
-#(cd unitune/openbox && pip install .)
+pip uninstall -y openbox
+(cd unitune/openbox && pip install .)
 
 NOISEPAGE_DIR=/mnt/nvme0n1/wz2/noisepage
 
@@ -47,13 +47,13 @@ do
 		ARCHIVE="${ARCHIVES[i]}"
 		NAME="${NAMES[i]}"
 
-		rm -rf unitune/UniTune/logs$PORT
+		rm -rf unitune/UniTune/logs
 		rm -rf /tmp/indexsize.json.$PORT
 		rm -rf /tmp/tmp.cnf
 		launch_db
 
 		(cd unitune/UniTune && python3 main.py --config-ini ${CONFIG})
-		mv unitune/UniTune/logs$PORT ${OUTPUT_BASE}/$NAME$j.$PORT
+		mv unitune/UniTune/logs ${OUTPUT_BASE}/$NAME$j.$PORT
 	done
 done
 
