@@ -84,6 +84,7 @@ class IndexAction(object):
         assert self._idx_name is not None
         idx_name = self._idx_name
         if not add:
+            assert "eindex" not in idx_name and "eeindex" not in idx_name
             if allow_fail:
                 return f"DROP INDEX IF EXISTS {idx_name}"
             return f"DROP INDEX {idx_name}"
@@ -197,11 +198,6 @@ class IndexSpace(spaces.Tuple):
         return str(self.class_mapping[(ia.tbl_name, ia.columns[0])])
 
     def get_state(self, env):
-        return [ia.raw_repr for ia in self.state_container if ia.raw_repr is not None]
-
-    def get_state_with_bias(self, env):
-        if self.state_container is None:
-            return []
         return [(ia.raw_repr, ia.bias) for ia in self.state_container if ia.raw_repr is not None]
 
     def get_latent_dim(self):
@@ -278,6 +274,7 @@ class IndexSpace(spaces.Tuple):
             index_vae_model=None,
             attributes_overwrite=None,
             tbl_include_subsets=None,
+            tbl_wheres=None,
             lsc=None,
             scale_noise_perturb=False,
             index_space_aux_type=False,
@@ -304,6 +301,7 @@ class IndexSpace(spaces.Tuple):
         self.agent_type = agent_type
         self.scale_noise_perturb = scale_noise_perturb
         self.illegal_table_cols = {t: set() for t in self.tables}
+        self.tbl_wheres = tbl_wheres
 
         # Initialize the policy depending on the representation.
         self.index_repr = index_repr = IndexRepr[index_repr]
@@ -479,6 +477,16 @@ class IndexSpace(spaces.Tuple):
                 if ("index_subset" not in neighbor_parameters) or neighbor_parameters["index_subset"]:
                     candidates.extend(self._sample_action_subsets(sampled_action))
 
+                if neighbor_parameters.get("index_workload_prune", False):
+                    # Attempt to prune the index options.
+                    prune_cands = self.index_repr_policy.prune(
+                        candidates,
+                        self.tbl_wheres,
+                        self.rel_metadata,
+                    )
+                    if len(prune_cands) > 0:
+                        candidates = prune_cands
+
                 for candidate in candidates:
                     ia = self.construct_indexaction(candidate)
                     if ia in self.illegal_indexes:
@@ -537,7 +545,7 @@ class IndexSpace(spaces.Tuple):
 
         # Reset the LSC.
         if self.lsc is not None:
-            self.lsc.reset()
+            self.lsc.reset(reset_lsc=kwargs.get("reset_lsc", None))
 
         assert "connection" in kwargs
         connection = kwargs["connection"]
@@ -557,21 +565,16 @@ class IndexSpace(spaces.Tuple):
             self.rel_metadata = self._rel_metadata
         self._build_mapping(self.rel_metadata)
 
-        # Construct the actual IndexActions.
+        # Construct the actual IndexActions for their raw_repr/bias.
         indices_check = []
         if "config" in kwargs and kwargs["config"] is not None:
-            # FIXME:
             target_config = kwargs["config"][-1]
-
-            old_container = self.state_container
-            for act in target_config:
+            for act, act_bias in target_config:
                 ia = self.construct_indexaction(act)
-                if ia in old_container:
-                    # Fetch the bias if relevant.
-                    indices_check.append(old_container[old_container.index(ia)])
-                else:
-                    indices_check.append(ia)
+                ia.bias = act_bias
+                indices_check.append(ia)
 
+        # Now *actually* populate state_container from the server.
         self.state_container = []
         for relname, indexes in existing_indexes.items():
             for idxname, idx_desc in indexes.items():
@@ -579,12 +582,16 @@ class IndexSpace(spaces.Tuple):
                 col_repr = ",".join(idx_desc["columns"])
                 inc_col_repr = ("INCLUDE (" + ",".join(idx_desc["include"]) + ")") if len(idx_desc["include"]) > 0 else ""
                 ia = IndexAction.construct_md(idxname, relname, idx_type, idx_desc["columns"], idx_desc["include"], idx_desc["aux_md"])
-                logging.debug(f"Existing index: {ia}")
                 if ia in indices_check:
-                    # Keep the old index action if the index already exists.
-                    self.state_container.append(indices_check[indices_check.index(ia)])
+                    # Yoink the old index's raw_repr/bias over. [name] should be the same.
+                    old_ia = indices_check[indices_check.index(ia)]
+                    ia.raw_repr = old_ia.raw_repr
+                    ia.bias = old_ia.bias
+                    logging.debug(f"Existing index {ia} from {old_ia}")
                 else:
-                    self.state_container.append(ia)
+                    logging.debug(f"Existing index without raw-repr: {ia}")
+
+                self.state_container.append(ia)
 
     def advance(self, action, **kwargs):
         # Construct the index action.
@@ -636,9 +643,11 @@ class IndexSpace(spaces.Tuple):
             allow_fail = kwargs["load"]
 
         sql_commands = []
-        for act in action:
+        for act, act_bias in action:
             assert check_subspace(self, act)
             ia = self.construct_indexaction(act)
+            # Inject the bias.
+            ia.bias = act_bias
             acts.append(ia)
 
             if not ia.is_valid:
@@ -646,6 +655,7 @@ class IndexSpace(spaces.Tuple):
                 continue
 
             if ia not in self.state_container:
+                logging.debug(f"[delta_action_plan]: Creating index -- {ia}")
                 sql_commands.append(ia.sql(add=True))
 
             if kwargs is not None and "reset" in kwargs:
@@ -654,7 +664,8 @@ class IndexSpace(spaces.Tuple):
 
         for ia in self.state_container:
             # Drop the index that is no longer needed.
-            if ia not in acts:
+            if ia not in acts and ("eindex" not in ia._idx_name) and ("eeindex" not in ia._idx_name):
+                logging.debug(f"[delta_action_plan]: Removing index -- {ia}")
                 sql_commands.append(ia.sql(add=False, allow_fail=allow_fail))
 
         return [], sql_commands

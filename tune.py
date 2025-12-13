@@ -90,9 +90,15 @@ class TuneTrial(object):
             logger=self.logger)
 
         # Attach a target state reset wrapper around it.
-        mko = self.spec.maximize_knobs_only if hasattr(self.spec, "maximize_knobs_only") else False
-        sr = self.spec.start_reset if hasattr(self.spec, "start_reset") else False
-        self.target_state_wrapper = self.env = TargetStateResetWrapper(self.env, self.spec.maximize_state, self.reward_utility, maximize_knobs_only=mko, start_reset=sr)
+        reset_logs = Path(self.spec.output_log_path) / "rlogs"
+        reset_logs.mkdir(parents=True, exist_ok=True)
+        self.target_state_wrapper = self.env = TargetStateResetWrapper(
+            self.env,
+            self.spec.reset_policy,
+            self.spec.reset_purity,
+            self.reward_utility,
+            debug_log_path=reset_logs,
+        )
 
         # Now attach a flatten observation wrapper.
         self.env = FlattenObservation(self.env)

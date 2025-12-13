@@ -14,7 +14,7 @@ from pathlib import Path
 import logging
 
 import sys
-sys.path.append(".")
+sys.path.append("/home/wz2/mythril")
 
 from envs.spec import Spec
 from envs.repository import Repository
@@ -37,7 +37,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     benchmark_config_path = "configs/benchmark/job_full.yaml"
-    assert args.bao_file is not None
     if args.bao_file is not None:
         benchmark_config_path = args.bao_config_file
 

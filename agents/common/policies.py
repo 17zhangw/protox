@@ -202,6 +202,9 @@ class BasePolicy(BaseModel, ABC):
         self._squash_output = squash_output
 
     def discriminate(self, use_target, states, embed_actions, actions_dim, env_actions=None):
+        # Only log if not backprop.
+        should_log = states.shape[0] == 1
+
         th_embed_actions = th.as_tensor(embed_actions, device=self.device).float()
         states_tile = states.repeat_interleave(th.tensor(actions_dim, device=self.device), dim=0)
         if use_target:
@@ -212,6 +215,22 @@ class BasePolicy(BaseModel, ABC):
             next_q_values = th.cat(self.critic(states_tile, th_embed_actions), dim=1)
             assert not th.isnan(next_q_values).any()
             next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
+
+        if should_log and env_actions is not None:
+            env_idxs = [
+                self.action_space.get_index_space().construct_indexaction(ea[-1]).sql(add=True).split(" ON ")[-1].strip()
+                for ea in env_actions
+            ]
+            idxqmap = {}
+            for einum, env_idx in enumerate(env_idxs):
+                nq = next_q_values[einum][0]
+                if env_idx in idxqmap:
+                    idxqmap[env_idx] = max(idxqmap[env_idx], nq)
+                else:
+                    idxqmap[env_idx] = nq
+            idxqlist = sorted(idxqmap.items(), key=lambda x: x[1], reverse=True)
+            for idx, q in idxqlist:
+                logging.debug(f"[discriminate] {idx} -- {q}")
 
         env_splitter = [0] + list(actions_dim.cumsum())
         if env_actions is not None:

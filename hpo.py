@@ -22,6 +22,7 @@ from parse_args import parse_cmdline_args
 from hyperopt import hp
 
 from agents.hpo import construct_wolp_config
+import logging
 
 
 METRIC = "Best Metric"
@@ -130,6 +131,7 @@ class TuneOpt(Trainable):
         return data
 
     def cleanup(self):
+        logging.info("Cleaning up trial.")
         self.trial.cleanup()
         if Path(f"{self.pg_path}/{self.port}.signal").exists():
             os.remove(f"{self.pg_path}/{self.port}.signal")
@@ -151,6 +153,7 @@ if __name__ == "__main__":
     parser.add_argument("--initial-configs", type=Path, default=None)
     parser.add_argument("--initial-repeats", type=int, default=1)
     parser.add_argument("--early-kill", action="store_true")
+    parser.add_argument("--storage-path", type=Path, default=None)
     args = parse_cmdline_args(parser, path_type=str)
     obj = "max" if args.target == "tps" else "min"
 
@@ -164,6 +167,7 @@ if __name__ == "__main__":
     with open(benchmark_config, "r") as f:
         bb_config = yaml.safe_load(f)["mythril"]
         per_query_scan_method = bb_config["per_query_scan_method"]
+        per_query_cte_materialize = bb_config["per_query_cte_materialize"]
         per_query_select_parallel = bb_config["per_query_select_parallel"]
         index_space_aux_type = bb_config["index_space_aux_type"]
         index_space_aux_include = bb_config["index_space_aux_include"]
@@ -186,6 +190,7 @@ if __name__ == "__main__":
     config["mythril_system_knobs"] = system_knobs
     config["mythril_per_query_knobs"] = per_query_knobs
     config["mythril_per_query_scan_method"] = per_query_scan_method
+    config["mythril_per_query_cte_materialize"] = per_query_cte_materialize
     config["mythril_per_query_select_parallel"] = per_query_select_parallel
     config["mythril_index_space_aux_type"] = index_space_aux_type
     config["mythril_index_space_aux_brin"] = index_space_aux_brin
@@ -198,6 +203,9 @@ if __name__ == "__main__":
     scheduler = FIFOScheduler()
 
     initial_configs = None
+    if args.initial_configs:
+        assert args.initial_configs.exists()
+
     if args.initial_configs is not None and args.initial_configs.exists():
         initial_tmp_configs = []
         with open(args.initial_configs, "r") as f:
@@ -208,6 +216,8 @@ if __name__ == "__main__":
                     config["mythril_per_query_knobs"] = per_query_knobs
                 if "mythril_per_query_scan_method" not in config:
                     config["mythril_per_query_scan_method"] = per_query_scan_method
+                if "mythril_per_query_cte_materialize" not in config:
+                    config["mythril_per_query_cte_materialize"] = per_query_cte_materialize
                 if "mythril_per_query_select_parallel" not in config:
                     config["mythril_per_query_select_parallel"] = per_query_select_parallel
                 if "mythril_index_space_aux_type" not in config:
@@ -246,6 +256,7 @@ if __name__ == "__main__":
     dtime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_config = RunConfig(
         name=f"MythrilHPO_{dtime}",
+        local_dir=args.storage_path,
         failure_config=FailureConfig(max_failures=0, fail_fast=True),
         sync_config=SyncConfig(upload_dir=None, syncer=None),
         verbose=2,

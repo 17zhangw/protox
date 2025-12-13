@@ -8,6 +8,8 @@ mythril:
     early_workload_kill: True
     query_directory: "/home/wz2/mythril/queries/tpch"
     query_order: "/home/wz2/mythril/queries/tpch/order_bao.txt"
+    execute_query_directory: "/home/wz2/mythril/queries/tpch"
+    execute_query_order: "/home/wz2/mythril/queries/tpch/order_bao.txt"
     tbl_include_subsets_prune: True
 
   max_num_columns: 16

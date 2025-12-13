@@ -32,9 +32,7 @@ def parse_access_method(explain_data):
         if "Node Type" in data:
             # Propagate the Bitmap Index Scan => upwards.
             if data["Node Type"] == "Bitmap Heap Scan":
-                assert "Plans" in data and len(data["Plans"]) > 0
-                if data["Plans"][0]["Node Type"] == "Bitmap Index Scan":
-                    sub_data[data["Alias"]] = "Bitmap Index Scan"
+                sub_data[data["Alias"]] = "Bitmap Index Scan"
 
         return sub_data
     return recurse(explain_data)
@@ -54,6 +52,14 @@ def time_query(prefix, connection, qid, query, timeout):
     has_explain = "EXPLAIN" in query
     explain_data = None
 
+    # Capture diagnostics.
+    diags = []
+    def _diag_handler(diag):
+        nonlocal diags
+        if diag is not None and (diag.message_primary or diag.message_hint or diag.message_detail):
+            diags.append((diag.message_primary, diag.message_hint, diag.message_detail))
+    connection.add_notice_handler(_diag_handler)
+
     try:
         start_time = time.time()
         cursor = connection.execute(query)
@@ -66,32 +72,48 @@ def time_query(prefix, connection, qid, query, timeout):
             explain_data = c
 
         logging.debug(f"{prefix} {qid} evaluated in {qid_runtime/1e6}")
+        assert len(diags) == 0
 
     except QueryCanceled:
         logging.debug(f"{prefix} {qid} exceeded evaluation timeout {timeout}")
         qid_runtime = timeout * 1e6
         has_timeout = True
     except Exception as e:
-        assert False, print(e)
+        if len(diags) > 0:
+            print(diags)
+
+        msg = str(e)
+        if "invalid DSA memory alloc request size" in msg:
+            # Apply a batsu-penalty.
+            # Prevent the upper scheme from selecting it..
+            qid_runtime = timeout * 1e6 * 100
+            has_timeout = True
+
+        else:
+            print(e, query)
+            assert False
+    connection.remove_notice_handler(_diag_handler)
     # qid_runtime is in microseconds.
     return qid_runtime, has_timeout, explain_data
 
 
-def acquire_metrics_around_query(prefix, env_spec, connection, qid, query, qtimeout, metrics=False):
-    args = {"connection": connection}
+def acquire_metrics_around_query(prefix, env_spec, connection, qid, query, qtimeout, metrics=False, dbgprint=False):
     force_statement_timeout(connection, 0)
     if metrics:
-        initial_metrics = env_spec.observation_space.construct_online(**args)
+        initial_metrics = env_spec.observation_space.construct_online(connection=connection)
 
     if qtimeout is not None and qtimeout > 0:
         force_statement_timeout(connection, qtimeout * 1000)
 
+    if "/*+" in query and "*/" in query:
+        hintset = query.split("/*+")[1].split("*/")[0]
+        logging.debug(f"Executing {prefix} {qid} hintset: {hintset}")
     qid_runtime, main_timeout, explain_data = time_query(prefix, connection, qid, query, qtimeout)
 
     # Wipe the statement timeout.
     force_statement_timeout(connection, 0)
     if metrics:
-        final_metrics = env_spec.observation_space.construct_online(**args)
+        final_metrics = env_spec.observation_space.construct_online(connection=connection)
         diff = env_spec.observation_space.construct_metric_delta(initial_metrics, final_metrics)
     else:
         diff = None
@@ -106,10 +128,16 @@ def execute_serial_variations(env_spec, connection, timeout, logger, qid, query,
     timeout_limit = timeout
     # Best run invocation.
     best_metric, best_time, best_timeout, best_explain_data, runs_idx = None, None, True, None, None
+    best_hint_str = None
 
     for prefix, pqk in runs:
-        # Attach the specific per-query knobs.
-        pqk_query = "/*+ " + " ".join([knob.resolve_per_query_knob(value, all_knobs=real_knobs) for (knob, value) in pqk]) + " */" + query
+        if len(pqk) > 0:
+            # Attach the specific per-query knobs.
+            hint_str = "/*+ " + " ".join([knob.resolve_per_query_knob(value, all_knobs=real_knobs) for (knob, value) in pqk]) + " */"
+            pqk_query = hint_str + query
+        else:
+            pqk_query = query
+            hint_str = ""
         # Log the query plan.
         pqk_query = "EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF) " + pqk_query
 
@@ -136,12 +164,34 @@ def execute_serial_variations(env_spec, connection, timeout, logger, qid, query,
             best_time = runtime
             best_timeout = did_timeout
             best_explain_data = explain_data
+            best_hint_str = hint_str
             runs_idx = (prefix, pqk)
 
         if logger is not None:
             logger.record(f"instr_time/{prefix}", runtime / 1e6)
 
-    return best_metric, best_time, best_timeout, best_explain_data, runs_idx
+    return best_metric, best_time, best_timeout, best_explain_data, best_hint_str, runs_idx
+
+
+def explain_indexusage(connection, sql, qid_knobs, real_knobs):
+    # Attach the specific per-query knobs.
+    pqk_query = "/*+ " + " ".join([knob.resolve_per_query_knob(value, all_knobs=real_knobs) for (knob, value) in qid_knobs]) + " */" + sql
+    pqk_query = "EXPLAIN (FORMAT JSON) " + pqk_query
+
+    def _recurse(p):
+        idxes = set()
+        if "Plan" in p:
+            idxes.update(_recurse(p["Plan"]))
+        if "Plans" in p:
+            for pp in p["Plans"]:
+                idxes.update(_recurse(pp))
+        if "Index Name" in p:
+            idxes.add(p["Index Name"])
+        return idxes
+
+    data = [r for r in connection.execute(pqk_query)][0][0][0]
+    return _recurse(data)
+
 
 def extract_aliases(stmts):
     # Extract the aliases.
@@ -169,7 +219,7 @@ def extract_aliases(stmts):
     aliases = {k:v for k,v in aliases.items() if k not in ctes}
     return aliases
 
-def extract_sqltypes(stmts, pid):
+def extract_sqltypes(stmts, pid, force_hint=None):
     sqls = []
     for stmt in stmts:
         sql_type = QueryType.UNKNOWN
@@ -189,6 +239,10 @@ def extract_sqltypes(stmts, pid):
             q = q.replace("pid", str(pid))
         elif pid is not None and "PID" in q:
             q = q.replace("PID", str(pid))
+
+        if force_hint is not None:
+            assert sql_type == QueryType.SELECT
+            q = force_hint + q
 
         sqls.append((sql_type, q))
     return sqls
@@ -239,3 +293,12 @@ def extract_columns(stmt, tables, all_attributes, query_aliases):
                 traverse_extract_columns(aliases, node.ast_node.whereClause)
                 all_refs.extend(traverse_extract_columns(aliases, node.ast_node, update=False))
     return tbl_col_usages, all_refs
+
+
+def extract_ctenames(stmt):
+    ctenames = set()
+    for node in stmt.traverse():
+        if isinstance(node, pglast.node.Node) and isinstance(node.ast_node, pglast.ast.CommonTableExpr):
+            assert node.ast_node.ctename
+            ctenames.add(node.ast_node.ctename)
+    return sorted(ctenames)

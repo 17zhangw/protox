@@ -21,6 +21,7 @@ class SettingType(Enum):
     SCANMETHOD_ENUM_CATEGORICAL = 7
     MAGIC_HINTSET_ENUM_CATEGORICAL = 8
     QUERY_TABLE_ENUM = 9
+    CTE_MATERIALIZE_CATEGORICAL = 10
 
 @unique
 class KnobClass(Enum):
@@ -35,6 +36,7 @@ def is_knob_enum(knob):
         SettingType.BINARY_ENUM,
         SettingType.SCANMETHOD_ENUM,
         SettingType.SCANMETHOD_ENUM_CATEGORICAL,
+        SettingType.CTE_MATERIALIZE_CATEGORICAL,
         SettingType.MAGIC_HINTSET_ENUM_CATEGORICAL,
         SettingType.QUERY_TABLE_ENUM,
     ]
@@ -48,7 +50,13 @@ def is_binary_enum(knob):
 def resolve_enum_value(knob, value, all_knobs={}):
     assert is_knob_enum(knob)
     if knob.knob_type == SettingType.BINARY_ENUM:
-        return "on" if value == 1 else "off"
+        if knob.knob_name == "huge_pages":
+            return "off" if value == 0 else "try"
+        elif knob.knob_name == "io_method":
+            return "sync" if value == 0 else "worker"
+        else:
+            assert knob.knob_name == "wal_compression"
+            return "on" if value == 1 else "off"
 
     if knob.knob_type == SettingType.QUERY_TABLE_ENUM:
         integral_value = int(value)
@@ -62,12 +70,34 @@ def resolve_enum_value(knob, value, all_knobs={}):
         # FIXME: pg_hint_plan lets specifying any and then pg will tweak it down.
         return f"Parallel({selected_table} {max_workers})"
 
-    if knob.knob_type in [SettingType.SCANMETHOD_ENUM, SettingType.SCANMETHOD_ENUM_CATEGORICAL]:
+    if knob.knob_type in [SettingType.SCANMETHOD_ENUM]:
         assert "_scanmethod" in knob.knob_name
         tbl = knob.knob_name.split("_scanmethod")[0]
         if value == 1:
             return f"NoSeqScan({tbl})"
         return f"SeqScan({tbl})"
+
+    if knob.knob_type in [SettingType.SCANMETHOD_ENUM_CATEGORICAL]:
+        assert "_scanmethod" in knob.knob_name
+        tbl = knob.knob_name.split("_scanmethod")[0]
+        if value == 2:
+            return f"IndexOnlyScan({tbl})"
+        elif value == 1:
+            return f"BitmapScan({tbl})"
+        else:
+            assert value == 0.
+            return f"SeqScan({tbl})"
+
+    if knob.knob_type in [SettingType.CTE_MATERIALIZE_CATEGORICAL]:
+        assert "_ctemat_" in knob.knob_name
+        ctename = knob.knob_name.split("_ctemat_")[-1]
+        if value == 2:
+            return f"Materialize({ctename} MATERIALIZE)"
+        elif value == 1:
+            return f"Materialize({ctename} INLINE)"
+        else:
+            # If value is 0, treat it as sentinel and no-op it.
+            return ""
 
     if knob.knob_type in [SettingType.MAGIC_HINTSET_ENUM_CATEGORICAL]:
         # This is curated from BAO.
@@ -131,7 +161,10 @@ def regress_ams(qid_knobs, access_method, explain):
             assert "_scanmethod" in knob.knob_name
             alias = knob.knob_name.split("_scanmethod")[0]
             if alias in access_method:
-                value = 1 if ("Index" in access_method[alias] or "Bitmap Index" in access_method[alias]) else 0
+                if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                    value = 1 if ("Index" in access_method[alias] or "Bitmap" in access_method[alias]) else 0
+                else:
+                    value = 1 if ("Bitmap" in access_method[alias]) else (2 if ("Index" in access_method[alias]) else 0)
                 new_qid_knobs.append((knob, value))
                 if "Bitmap" in access_method[alias]:
                     logging.debug(f"Regressing {knob.name()} from {access_method[alias]} to {value}")
@@ -139,7 +172,10 @@ def regress_ams(qid_knobs, access_method, explain):
                 # Log out the missing alias for debugging reference.
                 logging.debug(f"Found missing {alias} in the parsed {access_method}.")
                 logging.debug(f"{explain}")
-                new_qid_knobs.append((knob, 0.))
+                if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                    new_qid_knobs.append((knob, 0.))
+                else:
+                    new_qid_knobs.append((knob, 0))
         else:
             new_qid_knobs.append((knob, v))
     return new_qid_knobs
@@ -155,7 +191,10 @@ def regress_qid_knobs(qid_knobs, real_knobs, access_method, explain):
             assert "_scanmethod" in knob.knob_name
             alias = knob.knob_name.split("_scanmethod")[0]
             if alias in access_method:
-                value = 1 if ("Index" in access_method[alias] or "Bitmap Index" in access_method[alias]) else 0
+                if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                    value = 1 if ("Index" in access_method[alias] or "Bitmap" in access_method[alias]) else 0
+                else:
+                    value = 1 if ("Bitmap" in access_method[alias]) else (2 if ("Index" in access_method[alias]) else 0)
                 global_qid_knobs.append((knob, value))
                 if "Bitmap" in access_method[alias]:
                     logging.debug(f"Regressing {knob.name()} from {access_method[alias]} to {value}")
@@ -163,7 +202,10 @@ def regress_qid_knobs(qid_knobs, real_knobs, access_method, explain):
                 # Log out the missing alias for debugging reference.
                 logging.debug(f"Found missing {alias} in the parsed {access_method}.")
                 logging.debug(f"{explain}")
-                global_qid_knobs.append((knob, 0.))
+                if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                    global_qid_knobs.append((knob, 0.))
+                else:
+                    global_qid_knobs.append((knob, 0))
         elif knob.knob_type == SettingType.BOOLEAN:
             global_qid_knobs.append((knob, 1.))
         elif knob.knob_name == "random_page_cost":

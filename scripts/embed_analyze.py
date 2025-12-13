@@ -7,7 +7,7 @@ from pathlib import Path
 import json
 import sys
 
-sys.path.append(".")
+sys.path.append("/home/wz2/mythril")
 
 from embeddings.train import _create_vae_model, _fetch_index_parameters
 from envs.spaces.index_space import IndexAction, IndexRepr, IndexSpace
@@ -39,6 +39,10 @@ def analyze(args):
     # Load the benchmark configuration.
     with open(args.benchmark_config, "r") as f:
         data = yaml.safe_load(f)
+        if args.specialization is not None:
+            # Attach the query specialization...
+            data["mythril"]["query_spec"]["query_directory"] = str(args.specialization)
+            data["mythril"]["query_spec"]["query_order"] = str(args.specialization / "d_order.txt")
         tables = data["mythril"]["tables"]
         max_attrs, max_cat_features, att_usage, class_mapping = _fetch_index_parameters(data)
 
@@ -100,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument("--base", type=Path, required=True)
     parser.add_argument("--num-points", type=int, required=True)
     parser.add_argument("--benchmark-config", type=Path, required=True)
+    parser.add_argument("--specialization", type=Path, default=None)
     parser.add_argument("--top", type=int, default=0)
     parser.add_argument("--recon-threshold", type=float, default=0)
     parser.add_argument("--max-segments", type=int, default=20)

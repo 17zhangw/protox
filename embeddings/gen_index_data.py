@@ -65,7 +65,12 @@ def write(data, output_dir, batch_num):
     df = pd.DataFrame(data)
     cols = [c for c in df if "col" in c and "str" not in c]
     df[cols] = df[cols].astype(int)
-    df.to_parquet(f"{output_dir}/{batch_num}.parquet")
+    try:
+        df.to_parquet(f"{output_dir}/{batch_num}.parquet")
+    except Exception as e:
+        print(e)
+        raise
+    print(f"Wrote to {output_dir}/{batch_num}.parquet")
     del df
 
 
@@ -338,6 +343,7 @@ def create_datagen_parser(subparser):
     parser = subparser.add_parser("generate")
     parser.add_argument("--config", type=Path, default="configs/config.yaml")
     parser.add_argument("--benchmark-config", type=Path, default="configs/benchmark/tpch.yaml")
+    parser.add_argument("--specialization", type=Path, default=None)
     parser.add_argument("--generate-costs", default=False, action="store_true")
     parser.add_argument("--sample-limit", default=100000, type=int)
     parser.add_argument("--batch-limit", type=str)
@@ -367,6 +373,11 @@ def execute_datagen(args):
     benchmark_config = args.benchmark_config
     with open(benchmark_config, "r") as f:
         benchmark_config = yaml.safe_load(f)
+
+    if args.specialization is not None:
+        # Attach the query specialization...
+        benchmark_config["mythril"]["query_spec"]["query_directory"] = str(args.specialization)
+        benchmark_config["mythril"]["query_spec"]["query_order"] = str(args.specialization / "d_order.txt")
 
     max_num_columns = benchmark_config["mythril"]["max_num_columns"]
     tables = benchmark_config["mythril"]["tables"]
@@ -429,10 +440,17 @@ def execute_datagen(args):
                     job_id += 1
 
         pool.close()
-        pool.join()
 
-        for result in results:
-            result.get()
+        with tqdm.tqdm(dynamic_ncols=True, total=len(results)) as pbar:
+            yoinked = set()
+            while len(yoinked) < len(results):
+                for i, result in enumerate(results):
+                    if result.ready() and i not in yoinked:
+                        result.get()
+                        pbar.update(1)
+                        yoinked.add(i)
+                time.sleep(5)
+        pool.join()
 
     duration = time.time() - start_time
     with open(f"{args.output_dir}/time.txt", "w") as f:

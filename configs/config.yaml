@@ -12,7 +12,7 @@ mythril:
   postgres_password: password
 
   # Path to a snapshot of the data archive.
-  data_snapshot_path: "data/tpch_sf10.tgz"
+  data_snapshot_path: "data/dsb_sf10.tgz"
 
   # Path to emit log file.
   output_log_path: artifacts/
@@ -46,8 +46,8 @@ mythril:
   index_space: True
 
   index_vae_metadata:
-    index_vae: False
-    embeddings: "vae_models/model13/embedder_15.pth"
+    index_vae: True
+    embeddings: "dsb_data_models/curated/model0/embedder_22.pth"
 
   lsc_parameters:
     lsc_enabled: False
@@ -65,6 +65,14 @@ mythril:
     # How many episodes to start.
     lsc_shift_after: 3
 
+  constraints:
+    memory_constraint: False
+    partial_account: True
+    memory_budget: "1GB"
+    query_constraint: False
+    query_tolerance: "10%"
+    reject: False
+
   # Representation of an index [ONE_HOT, ONE_HOT_DETERMINISTIC]
   index_repr: "ONE_HOT"
 
@@ -75,8 +83,11 @@ mythril:
   normalize_state: True
   # Whether to normalize the reward.
   normalize_reward: False
-  # Whether we should maximize the state.
-  maximize_state: True
+  # Policies for state reset:
+  # - "MAXIMAL" is the maximal state policy
+  # - "UCB" is to use UCB policy
+  reset_policy: "UCB"
+  reset_purity: "SHADOW"
   # Discount factor for rewards.
   gamma: 0.99
   # Gradient Clipping.

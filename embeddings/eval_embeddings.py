@@ -25,6 +25,7 @@ from pytorch_metric_learning.distances import LpDistance
 def create_eval_parser(subparser):
     parser = subparser.add_parser("eval")
     parser.add_argument("--benchmark-config", type=Path, required=True)
+    parser.add_argument("--specialization", type=Path, default=None)
     parser.add_argument("--models", type=str, required=True)
     parser.add_argument("--intermediate-step", type=int, default=1)
 
@@ -40,6 +41,10 @@ def eval_embedding(args):
     # Load the benchmark configuration.
     with open(args.benchmark_config, "r") as f:
         data = yaml.safe_load(f)
+        if args.specialization is not None:
+            # Attach the query specialization...
+            data["mythril"]["query_spec"]["query_directory"] = str(args.specialization)
+            data["mythril"]["query_spec"]["query_order"] = str(args.specialization / "d_order.txt")
         tables = data["mythril"]["tables"]
         max_attrs, max_cat_features, att_usage, _ = _fetch_index_parameters(data)
 

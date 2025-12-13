@@ -19,8 +19,8 @@ from psycopg.errors import QueryCanceled
 from envs import KnobClass, SettingType, regress_ams, regress_qid_knobs, is_knob_enum, is_binary_enum
 from envs.spaces.utils import fetch_server_knobs
 from envs.spaces.index_space import IndexAction
-from envs.workload_utils import parse_access_method, force_statement_timeout, acquire_metrics_around_query, execute_serial_variations
-from envs.workload_utils import extract_aliases, extract_sqltypes, extract_columns
+from envs.workload_utils import parse_access_method, force_statement_timeout, acquire_metrics_around_query, execute_serial_variations, explain_indexusage
+from envs.workload_utils import extract_aliases, extract_sqltypes, extract_columns, extract_ctenames
 from envs.workload_utils import QueryType
 
 
@@ -56,16 +56,17 @@ class Workload(object):
 
         # Build the SQL and table usage information.
         self.queries_mix = {}
+        self.cterefs = {}
         self.query_aliases = {}
         self.query_usages = {t: [] for t in self.tables}
         tbl_include_subsets = {tbl: set() for tbl in self.attributes.keys()}
         self.tbl_wheres = {tbl: set() for tbl in self.attributes.keys()}
-        sql_mapping = {}
+        self.sql_mapping = {}
         for stem, sql_file, ratio in sqls:
             assert stem not in self.queries
             self.order.append(stem)
             self.queries_mix[stem] = ratio
-            sql_mapping[stem] = sql_file
+            self.sql_mapping[stem] = sql_file
 
             with open(sql_file, "r") as q:
                 sql = q.read()
@@ -77,6 +78,7 @@ class Workload(object):
                 self.query_aliases[stem] = extract_aliases(stmts)
                 # Extract sql and query types.
                 self.queries[stem] = extract_sqltypes(stmts, pid)
+                self.cterefs[stem] = extract_ctenames(stmts)
 
                 # Construct table query usages.
                 for tbl in self.query_aliases[stem]:
@@ -151,6 +153,7 @@ class Workload(object):
             workload_timeout_penalty=1.,
             logger=None):
 
+        self.pid = pid
         self.workload_eval_mode = workload_eval_mode
         self.workload_eval_inverse = workload_eval_inverse
         # Whether we should use benchbase or not.
@@ -224,7 +227,7 @@ class Workload(object):
             shutil.rmtree(results, ignore_errors=True)
 
             # Determine whether the "known best" is good or not.
-            success, mutilated, q_timeout, accum_metric = self._execute_psycopg(env_spec, results, connection, action, timeout, reset_eval=True, reset_accum_metric=accum_metric)
+            success, mutilated, q_timeout, accum_metric, _ = self._execute_psycopg(env_spec, results, connection, action, timeout, reset_eval=True, reset_accum_metric=accum_metric)
             assert success
 
             # Forcefully reconstruct based on the output.
@@ -269,7 +272,8 @@ class Workload(object):
                 return False
         return True
 
-    def _execute_workload(self, connection, workload_timeout, ql_knobs={}, output_file=None, workload_qdir=None, env_spec=None, disable_pg_hint=False, forcescans={}, blocklist=[], qid_runtimes=None, cost_only=False):
+    def _execute_workload(self, connection, workload_timeout, ql_knobs={}, output_file=None, workload_qdir=None, env_spec=None, disable_pg_hint=False, forcescans={}, blocklist=[], qid_runtimes=None, cost_only=False, plans=None, metrics=False, dbgprint=False):
+        qmetricdata = {}
         # Get the knobs.
         real_knobs = {}
         if env_spec is not None:
@@ -282,6 +286,7 @@ class Workload(object):
         time_left = workload_timeout
 
         if workload_qdir is not None and workload_qdir[0] is not None:
+            mworkers = [r for r in connection.execute("SHOW max_worker_processes")][0][0]
             workload_qdir, workload_qlist = workload_qdir
             with open(workload_qlist, "r") as f:
                 psql_order = [(f"Q{i+1}", workload_qdir / l.strip()) for i, l in enumerate(f.readlines())]
@@ -292,7 +297,20 @@ class Workload(object):
             for qid, qpat in psql_order:
                 with open(qpat, "r") as f:
                     query = f.read()
-                actual_queries[qid] = [(QueryType.SELECT, query)]
+
+                # Check for force-hint.
+                force_hint = None
+                if query.startswith("/*+") and "*/" in query:
+                    force_hint = query.split("*/")[0] + "*/ "
+                    if "Parallel(" in force_hint:
+                        pp = force_hint.split("Parallel(")[0]
+                        post = force_hint.split("Parallel(")[1]
+                        force_hint = pp + "Parallel(" + post[:post.index(" ")] + " " + str(mworkers) + post[post.index(")"):]
+                    query = query.split("*/")[1].strip()
+
+                actual_queries[qid] = []
+                stmts = pglast.Node(pglast.parse_sql(query))
+                actual_queries[qid] = extract_sqltypes(stmts, self.pid, force_hint=force_hint)
         else:
             actual_order = self.order
             actual_sql_files = self.sql_files
@@ -315,7 +333,10 @@ class Workload(object):
                     qid_knobs = [ql_knobs[knob] for knob in ql_knobs.keys() if f"{qid}_" in knob]
 
                     undo_disable = None
-                    if disable_pg_hint:
+                    if "/*+ " in query:
+                        # Query already has forced hint.
+                        assert len(qid_knobs) == 0
+                    elif disable_pg_hint:
                         # Alter the session first.
                         disable = ";".join([f"SET {knob.knob_name} = OFF" for (knob, value) in qid_knobs if value == 0])
                         connection.execute(disable)
@@ -349,9 +370,14 @@ class Workload(object):
                             else:
                                 assert forcescans[qid] == "seq"
                                 options += [f"SeqScan({t})" for t in tbl_aliases]
-                        query = "/*+ " + " ".join(options) + " */" + query
+                        if len(options) > 0:
+                            query = "/*+ " + " ".join(options) + " */" + query
 
-                    if cost_only:
+                    if plans is not None:
+                        query = "EXPLAIN (FORMAT JSON) " + query
+                        plans[qid] = [r for r in connection.execute(query)][0][0][0]
+
+                    elif cost_only:
                         query = "EXPLAIN (FORMAT JSON) " + query
                         explain = [r for r in connection.execute(query)][0][0][0]
                         workload_time += explain["Plan"]["Total Cost"]
@@ -359,14 +385,17 @@ class Workload(object):
                         if output_file is not None:
                             query = "EXPLAIN (ANALYZE, TIMING OFF) " + query
 
-                        _, qid_runtime, timeout, explain = acquire_metrics_around_query("", None, connection, qid, query, time_left, metrics=False)
+                        qmetrics, qid_runtime, timeout, explain = acquire_metrics_around_query("", env_spec, connection, qid, query, time_left, metrics=metrics, dbgprint=dbgprint)
                         if disable_pg_hint and undo_disable is not None:
                             # Now undo the session.
                             connection.execute(undo_disable)
 
-                            if qid_runtimes is not None:
-                                # Log the qid_runtimes.
-                                qid_runtimes[qid] = (qid_runtime / 1e6)
+                        if qid_runtimes is not None:
+                            # Log the qid_runtimes.
+                            qid_runtimes[qid] = (qid_runtime / 1e6)
+
+                        if qmetrics is not None:
+                            qmetricdata[qid] = qmetrics
 
                         time_left -= (qid_runtime / 1e6)
                         workload_time += (qid_runtime / 1e6)
@@ -378,6 +407,8 @@ class Workload(object):
                         output_file.write(json.dumps(explain))
                         output_file.write("\n")
                         output_file.write("\n")
+        if metrics:
+            return workload_time, qmetricdata
         return workload_time
 
     def _execute_psycopg(self, env_spec, results, connection, action, timeout, reset_eval=False, reset_accum_metric=None, baseline=False):
@@ -388,6 +419,7 @@ class Workload(object):
         all_knobs = ks.get_state(None) if ks else {}
         # Current action's per-query knobs.
         ql_knobs = env_spec.action_space.get_query_level_knobs(action) if action is not None else {}
+        qhints = {}
 
         # Setup the mutilated action.
         mutilated = None
@@ -395,6 +427,7 @@ class Workload(object):
 
         query_explain_data = []
         qid_runtime_data = {}
+        qid_default_plans = {}
         running_time = 0
         stop_running = False
         for qid_index, qid in enumerate(self.order):
@@ -441,6 +474,11 @@ class Workload(object):
                 ams, explain = self._parse_single_access_method(connection, qid, ignore=True)
                 qid_default = regress_qid_knobs(qid_knobs, real_knobs, ams, explain)
 
+                plan = [r for r in connection.execute("EXPLAIN (FORMAT JSON) " + query)][0][0][0]
+                plan["qid"] = qid
+                plan["path"] = str(self.sql_mapping[qid])
+                qid_default_plans[qid] = plan
+
                 # Start time.
                 start_time = time.time()
 
@@ -486,6 +524,10 @@ class Workload(object):
                                 assert "scanmethod" in k.knob_name
                                 inlj_enums.append((k, 1))
                                 bottom_enums.append((k, 0))
+                            elif k.knob_type == SettingType.SCANMETHOD_ENUM_CATEGORICAL:
+                                top_enums.append((k, 2))
+                                inlj_enums.append((k, 2))
+                                bottom_enums.append((k, 0))
                             else:
                                 top_enums.append((k, int(k.sample_uniform())))
                                 inlj_enums.append((k, int(k.sample_uniform())))
@@ -519,16 +561,16 @@ class Workload(object):
                 if reset_eval and [v[1] for v in qid_global] == [v[1] for v in qid_knobs] and qid in reset_accum_metric:
                     # Case where the per-query and global match each other.
                     assert qid in reset_accum_metric
-                    best_metric, best_time, best_timeout = reset_accum_metric[qid]
+                    best_metric, best_time, best_timeout, best_hint_str = reset_accum_metric[qid]
                     runs_idx = ("PrevDual", qid_global, False)
 
                     # Note that we skipped.
                     logging.debug(f"reset_eval re-using prior computation for {qid}")
                 else:
-                    best_metric, best_time, best_timeout, best_explain_data, runs_idx = execute_serial_variations(
+                    best_metric, best_time, best_timeout, best_explain_data, best_hint_str, runs_idx = execute_serial_variations(
                         env_spec=env_spec,
                         connection=connection,
-                        timeout=min(timeout, self.workload_timeout - running_time + 1),
+                        timeout=min(timeout, self.workload_timeout - running_time + 1) if (not baseline) else timeout,
                         logger=self.logger,
                         qid=qid,
                         query=query,
@@ -551,9 +593,9 @@ class Workload(object):
                     # us too much here.
 
                     # If the "new" timed out or if "old" is better, use the old metric.
-                    _, old_best_time, _ = reset_accum_metric[qid]
+                    _, old_best_time, _, _ = reset_accum_metric[qid]
                     if best_timeout or old_best_time < best_time:
-                        best_metric, best_time, best_timeout = reset_accum_metric[qid]
+                        best_metric, best_time, best_timeout, best_hint_str = reset_accum_metric[qid]
                         runs_idx = ("PrevDual", qid_global)
 
                 assert qid not in qid_runtime_data
@@ -567,7 +609,9 @@ class Workload(object):
                     "metric": best_metric,
                     "timeout": best_timeout,
                     "prefix": runs_idx[0],
+                    "hint_str": best_hint_str,
                 }
+                qhints[str(self.sql_mapping[qid])] = best_hint_str
 
                 if runs_idx[0] == "PrevDual" and not best_timeout:
                     # Overwrite the action decision with the prior decision.
@@ -611,7 +655,7 @@ class Workload(object):
                 # Break if we've exceeded the minimum time.
                 # Note that runtime is in microseconds.
                 running_time += (qid_runtime_data[qid]["runtime"] / 1.0e6)
-                if self.early_workload_kill and self.workload_timeout > 0 and running_time > self.workload_timeout:
+                if self.early_workload_kill and self.workload_timeout > 0 and running_time > self.workload_timeout and (not baseline):
                     logging.info("Aborting workload early.")
                     # Don't penalize for now since it should anyways have negative reward.
                     stop_running = True
@@ -628,7 +672,7 @@ class Workload(object):
         # Get the timeouts flag.
         timeouts = [v["timeout"] for _, v in qid_runtime_data.items()]
         # Get the accumulated metrics.
-        accum_metric = {q: (v["metric"], v["runtime"], v["timeout"]) for q, v in qid_runtime_data.items()}
+        accum_metric = {q: (v["metric"], v["runtime"], v["timeout"], v["hint_str"]) for q, v in qid_runtime_data.items()}
 
         results_dir = Path(results)
         if not results_dir.exists():
@@ -643,6 +687,10 @@ class Workload(object):
                 f.write(json.dumps(explain))
                 f.write("\n")
                 f.write("\n")
+
+        with open(results_dir / "default.plans", "w") as f:
+            for qid, plan in qid_default_plans.items():
+                f.write(json.dumps(plan) + "\n")
 
         if need_metric:
             accum_data = [v["metric"] for _, v in qid_runtime_data.items()]
@@ -698,10 +746,10 @@ class Workload(object):
             if penalty > 0:
                 f.write(f"{len(self.order)},P,{time.time()},{penalty},0,PENALTY\n")
 
-        return True, mutilated, (any(timeouts) or stop_running), accum_metric
+        return True, mutilated, (any(timeouts) or stop_running), accum_metric, qhints
 
 
-    def execute(self, connection, reward_utility, env_spec, timeout=None, action=None, current_state=None, update=True):
+    def execute(self, connection, env_spec, timeout=None, action=None, current_state=None):
         success = True
         logging.info("Starting to run benchmark...")
 
@@ -717,6 +765,7 @@ class Workload(object):
 
             # Execute benchbase if specified.
             success = self._execute_benchbase(env_spec, results)
+            qhints = {}
             if success:
                 # We can only create a state if we succeeded.
                 args = {
@@ -735,10 +784,6 @@ class Workload(object):
                 assert current_state is not None
                 state = current_state
 
-            metric, reward = None, None
-            if reward_utility is not None:
-                metric, reward = reward_utility(result_dir=results, update=update, did_error=not success)
-
             if timeout is not None and timeout > 0:
                 connection.execute("ALTER SYSTEM SET statement_timeout = 0")
                 connection.execute("SELECT pg_reload_conf()")
@@ -753,7 +798,7 @@ class Workload(object):
             shutil.rmtree(results, ignore_errors=True)
             baseline = current_state is None
 
-            success, mutilated, q_timeout, accum_metric = self._execute_psycopg(env_spec, results, connection, action, timeout, baseline=baseline)
+            success, mutilated, q_timeout, accum_metric, qhints = self._execute_psycopg(env_spec, results, connection, action, timeout, baseline=baseline)
             assert success
 
             args = {
@@ -763,15 +808,10 @@ class Workload(object):
             }
             state = env_spec.observation_space.construct_offline(**args)
             assert success, logging.error("Invalid benchbase results information created from per-query run.")
-
-            metric, reward = None, None
-            if reward_utility is not None:
-                metric, reward = reward_utility(result_dir=results, update=update, did_error=not success)
         else:
             assert False, "Currently don't support not running with benchbase."
 
-        logging.info(f"Benchmark iteration with metric {metric} (reward: {reward}) (q_timeout: {q_timeout})")
-        return success, metric, reward, results, state, mutilated, q_timeout, accum_metric
+        return success, results, state, mutilated, q_timeout, accum_metric, qhints
 
     def _parse_query_am(self, connection, query):
         data = [r for r in connection.execute(query)][0][0]
@@ -801,6 +841,56 @@ class Workload(object):
         for qid in self.order:
             q_ams[qid] = self._parse_single_access_method(connection, qid)[0]
         return q_ams
+
+
+    def compute_used_mem(self, connection, partial, sysknobs, qknobs):
+        exist_idxes = [r[0] for r in connection.execute("""
+            SELECT indexname from pg_index, pg_class, pg_indexes
+            where pg_index.indexrelid = pg_class.oid and pg_class.relnamespace = 2200
+              and pg_indexes.indexname = pg_class.relname
+              and (pg_index.indisprimary or pg_index.indisunique)
+        """)]
+        exist_idxes = [ei.replace("public.", "") for ei in exist_idxes]
+
+        all_indexes = set()
+        if partial:
+            for qid in self.order:
+                queries = self.queries[qid]
+                qid_runtime = 0
+                for qidx, (sql_type, query) in enumerate(queries):
+                    assert sql_type != QueryType.UNKNOWN
+                    if sql_type != QueryType.SELECT:
+                        assert sql_type != QueryType.INS_UPD_DEL
+                        connection.execute(query)
+                        continue
+
+                    qid_knobs = [qknobs[knob] for knob in qknobs.keys() if f"{qid}_" in knob]
+                    all_indexes.update(explain_indexusage(connection, query, qid_knobs, sysknobs))
+        else:
+            # Charge for all indexes that are not primary/unique.
+            all_indexes = [r[0] for r in connection.execute("""
+            SELECT indexname from pg_index, pg_class, pg_indexes
+            where pg_index.indexrelid = pg_class.oid and pg_class.relnamespace = 2200
+              and pg_indexes.indexname = pg_class.relname
+              and not (pg_index.indisprimary or pg_index.indisunique)
+            """)]
+            all_indexes = set([ei.replace("public.", "") for ei in all_indexes])
+
+        # All "new" or non-primary/unique referenced indexes.
+        all_indexes = all_indexes.difference(exist_idxes)
+        # Total memory.
+        # pg_relation_size bytes -> GB
+        mem = sum([
+            [r for r in connection.execute(f"SELECT pg_relation_size('{ei}')") for ei in all_indexes][0][0]
+            for ei in all_indexes
+        ]) / 1024 / 1024 / 1024
+
+        exist_mem = sum([
+            [r for r in connection.execute(f"SELECT pg_relation_size('{ei}')") for ei in exist_idxes][0][0]
+            for ei in all_indexes
+        ]) / 1024 / 1024 / 1024
+        return exist_mem, mem
+
 
     def save_state(self):
         kv = {}

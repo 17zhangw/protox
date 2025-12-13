@@ -14,6 +14,7 @@ from gymnasium.spaces import Space, Dict, Box
 from gymnasium.spaces.utils import flatten, flatten_space, flatdim, unflatten
 from envs.spaces.utils import check_subspace, fetch_server_knobs, overwrite_benchbase_hintset
 from envs.spaces import Knob, CategoricalKnob, full_knob_name, _create_knob
+from pathlib import Path
 
 
 class KnobSpace(spaces.Dict):
@@ -63,7 +64,7 @@ class KnobSpace(spaces.Dict):
         # assert self.contains(action)
         ret = {}
         for key, knob in self.knobs.items():
-            if knob.knob_class == KnobClass.QUERY:
+            if knob.knob_class == KnobClass.QUERY and key in action:
                 ret[key] = (knob, action[key])
         return ret
 
@@ -91,6 +92,7 @@ class KnobSpace(spaces.Dict):
             seed,
             per_query_parallel={},
             per_query_scans={},
+            per_query_ctes={},
             query_names=[]):
         self.knobs = {}
         self.tables = tables
@@ -118,31 +120,63 @@ class KnobSpace(spaces.Dict):
                 self.knobs[knob.name()] = knob
                 spaces.append((knob.name(), knob))
 
+        cat_spaces = []
+        self.cat_dims = []
         for q, kv in per_query_scans.items():
             for _, aliases in kv.items():
                 for v in aliases:
-                    md = {
-                        "type": "scanmethod_enum",
-                        "min": 0,
-                        "max": 1,
-                        "quantize": 0,
-                        "log_scale": 0,
-                        "unit": 0,
-                    }
+                    #md = {
+                    #    "type": "scanmethod_enum",
+                    #    "min": 0,
+                    #    "max": 1,
+                    #    "quantize": 0,
+                    #    "log_scale": 0,
+                    #    "unit": 0,
+                    #}
 
-                    knob = _create_knob(
+                    #knob = _create_knob(
+                    #    table_name=None,
+                    #    query_name=q,
+                    #    knob_name=v + "_scanmethod",
+                    #    metadata=md,
+                    #    do_quantize=False,
+                    #    default_quantize_factor=quantize_factor,
+                    #    seed=seed)
+                    #self.knobs[knob.name()] = knob
+                    #spaces.append((knob.name(), knob))
+
+                    md = {
+                        "type": "scanmethod_enum_categorical",
+                        "values": ["BitmapScan", "IndexOnlyScan"],
+                        "default": 0,
+                    }
+                    knob = CategoricalKnob(
                         table_name=None,
                         query_name=q,
                         knob_name=v + "_scanmethod",
                         metadata=md,
-                        do_quantize=False,
-                        default_quantize_factor=quantize_factor,
                         seed=seed)
                     self.knobs[knob.name()] = knob
-                    spaces.append((knob.name(), knob))
+                    cat_spaces.append((knob.name(), knob))
+                    self.cat_dims.append(knob.num_elems)
 
-        cat_spaces = []
-        self.cat_dims = []
+        for q, ctes in per_query_ctes.items():
+            for cte in ctes:
+                md = {
+                    "type": "cte_materialize_categorical",
+                    "values": None,
+                    "default": 0,
+                }
+                knob = CategoricalKnob(
+                    table_name=None,
+                    query_name=q,
+                    knob_name="_ctemat_" + cte,
+                    metadata=md,
+                    seed=seed)
+                self.knobs[knob.name()] = knob
+                cat_spaces.append((knob.name(), knob))
+                self.cat_dims.append(knob.num_elems)
+
         for q, kv in per_query_parallel.items():
             values = []
             for _, aliases in kv.items():
@@ -218,7 +252,8 @@ class KnobSpace(spaces.Dict):
         self.state_container = fetch_server_knobs(connection, self.tables, self.knobs, workload=kwargs["workload"])
         if "config" in kwargs and kwargs["config"] is not None:
             for key, knob in self.knobs.items():
-                if knob.knob_class == KnobClass.QUERY:
+                if knob.knob_class == KnobClass.QUERY and knob.name() in kwargs["config"][0]:
+                    # Only populate if exists.
                     self.state_container[knob.name()] = kwargs["config"][0][knob.name()]
 
     def advance(self, action, **kwargs):
@@ -286,14 +321,20 @@ class KnobSpace(spaces.Dict):
         return real_actions
 
     def generate_plan(self, action, **kwargs):
-        assert check_subspace(self, action)
+        if not (kwargs and kwargs.get("no_check", False)):
+            assert check_subspace(self, action)
+
         force = kwargs.get("force", False)
         if "original_benchbase_config_path" in kwargs:
             original_benchbase_config_path = kwargs["original_benchbase_config_path"]
             benchbase_config_path = kwargs["benchbase_config_path"]
 
-            conf_etree = ET.parse(original_benchbase_config_path)
-            root = conf_etree.getroot()
+            if Path(original_benchbase_config_path).exists():
+                conf_etree = ET.parse(original_benchbase_config_path)
+                root = conf_etree.getroot()
+            else:
+                conf_etree = None
+                root = None
         else:
             original_benchbase_config_path = None
             benchbase_config_path = None
@@ -340,6 +381,7 @@ class KnobSpace(spaces.Dict):
                 assert self.knobs[act].knob_class == KnobClass.KNOB
                 kt = self.knobs[act].knob_type
                 param = "{act} = {val:.2f}" if kt == SettingType.FLOAT else "{act} = {val:d}"
+                val = float(val) if kt == SettingType.FLOAT else int(val)
                 assert kt == SettingType.FLOAT or kt == SettingType.INTEGER or kt == SettingType.BYTES or kt == SettingType.INTEGER_TIME
                 config_changes.append(param.format(act=act, val=val))
 

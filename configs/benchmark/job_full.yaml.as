@@ -8,6 +8,8 @@ mythril:
     early_workload_kill: True
     query_directory: "/home/wz2/mythril/queries/job_full"
     query_order: "/home/wz2/mythril/queries/job_full/order.txt"
+    execute_query_directory: "/home/wz2/mythril/queries/job_full"
+    execute_query_order: "/home/wz2/mythril/queries/job_full/order.txt"
 
   max_num_columns: 12
   tables:

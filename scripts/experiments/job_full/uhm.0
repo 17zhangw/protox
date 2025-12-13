@@ -29,8 +29,8 @@ workload_qdir = /home/wz2/mythril/queries/job_full/
 q_mv_file = 1
 mv_trainset_dir =2
 benchbase_config = /home/wz2/noisepage-pilot/config/behavior/benchbase/tpcc_config.xml
-log_path = logs
-result_path = logs/results
+log_path = logs_uhm0
+result_path = logs_uhm0/results
 
 [tune]
 task_id = tpch_test
@@ -40,7 +40,7 @@ sub_budget = 1200
 context = True
 context_type = im
 context_pca_components = 5
-output_file = logs/tpch_test.res
+output_file = logs_uhm0/tpch_test.res
 index_budget = 2000000
 arm_method = ts
 ts_use_window = True

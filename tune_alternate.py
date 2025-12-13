@@ -84,7 +84,12 @@ class AlternateTrial(object):
             logger=self.logger)
         self.actual_base_env = unwrap_to_base_env(self.base_env)
         # Attach a target state reset wrapper around it.
-        self.target_state_wrapper = self.env = TargetStateResetWrapper(self.env, self.spec.maximize_state, self.reward_utility, maximize_knobs_only=False, start_reset=False)
+        self.target_state_wrapper = self.env = TargetStateResetWrapper(
+            self.env,
+            self.spec.reset_policy,
+            self.spec.reset_purity,
+            self.reward_utility,
+        )
         # Now attach a flatten observation wrapper.
         self.env = FlattenObservation(self.env)
         self.normalize_env = None

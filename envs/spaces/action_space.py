@@ -64,6 +64,18 @@ class ActionSpace(spaces.Tuple):
             return np.array([-1.], dtype=np.float32)
         return idxs.lsc.current_scale()
 
+    def get_lsc_for_reset(self):
+        idxs = self.get_index_space()
+        if idxs is None or idxs.lsc is None or (not self.lsc_embed):
+            return None
+        return idxs.lsc.save_for_reset()
+
+    def get_lsc_shift_k(self, k):
+        idxs = self.get_index_space()
+        if idxs is None or idxs.lsc is None or (not self.lsc_embed):
+            return None
+        return idxs.lsc.reset_shift_k(k)
+
     def adjust_action_lsc(self, act, lsc):
         idxs = self.get_index_space()
         if idxs is None or idxs.lsc is None or (not self.lsc_embed):

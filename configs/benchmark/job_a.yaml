@@ -180,9 +180,12 @@ mythril:
   #     ...
   per_query_scan_method: True
   per_query_select_parallel: True
+  per_query_cte_materialize: True
 
-  index_space_aux_type: False
-  index_space_aux_include: False
+  index_space_aux_type: True
+  index_space_aux_brin: True
+  index_space_aux_include: True
+  index_space_aux_md: True
 
   per_query_knob_gen:
       enable_hashjoin:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}

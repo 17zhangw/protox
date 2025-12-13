@@ -52,6 +52,7 @@ def _mutate_common_config(logdir, mythril_dir, hpo_config, mythril_args):
     benchmark_config["mythril"]["per_query_knobs"] = hpo_config["mythril_per_query_knobs"]
     benchmark_config["mythril"]["per_query_knob_gen"] = hpo_config["mythril_per_query_knob_gen"]
     benchmark_config["mythril"]["per_query_scan_method"] = hpo_config["mythril_per_query_scan_method"]
+    benchmark_config["mythril"]["per_query_cte_materialize"] = hpo_config["mythril_per_query_cte_materialize"]
     benchmark_config["mythril"]["per_query_select_parallel"] = hpo_config["mythril_per_query_select_parallel"]
     benchmark_config["mythril"]["index_space_aux_type"] = hpo_config["mythril_index_space_aux_type"]
     benchmark_config["mythril"]["index_space_aux_brin"] = hpo_config["mythril_index_space_aux_brin"]
@@ -71,34 +72,45 @@ def _mutate_common_config(logdir, mythril_dir, hpo_config, mythril_args):
     with open(f"{mythril_dir}/{config}", "r") as f:
         config = yaml.safe_load(f)
     pg_path = os.path.expanduser(config["mythril"]["postgres_path"])
+    if "postgres_path" in mythril_args:
+        pg_path = os.path.expanduser(mythril_args.postgres_path)
     port = get_free_port(pg_path)
+
+    if "postgres_db" in mythril_args:
+        config["mythril"]["postgres_db"] = mythril_args.postgres_db
+        config["mythril"]["postgres_user"] = mythril_args.postgres_user
+        config["mythril"]["postgres_passwor"] = mythril_args.postgres_password
 
     # Update all the paths and metadata needed.
     config["mythril"]["postgres_path"] = pg_path
     config["mythril"]["benchbase_path"] = os.path.expanduser(config["mythril"]["benchbase_path"])
 
     benchbase_config_path = mythril_args.benchbase_config_path
-    conf_etree = ET.parse(benchbase_config_path)
-    jdbc = f"jdbc:postgresql://localhost:{port}/benchbase?preferQueryMode=extended"
-    conf_etree.getroot().find("url").text = jdbc
+    if benchbase_config_path != "":
+        conf_etree = ET.parse(benchbase_config_path)
+        jdbc = f"jdbc:postgresql://localhost:{port}/benchbase?preferQueryMode=extended"
+        conf_etree.getroot().find("url").text = jdbc
 
-    if "oltpr_sf" in mythril_args:
-        if conf_etree.getroot().find("scalefactor") is not None:
-            conf_etree.getroot().find("scalefactor").text = str(mythril_args.oltp_sf)
-        if conf_etree.getroot().find("terminals") is not None:
-            conf_etree.getroot().find("terminals").text = str(mythril_args.oltp_num_terminals)
-        if conf_etree.getroot().find("works") is not None:
-            works = conf_etree.getroot().find("works").find("work")
-            if works.find("time") is not None:
-                conf_etree.getroot().find("works").find("work").find("time").text = str(mythril_args.oltp_duration)
-            if works.find("warmup") is not None:
-                conf_etree.getroot().find("works").find("work").find("warmup").text = str(mythril_args.oltp_warmup)
-    conf_etree.write("benchmark.xml")
-    config["mythril"]["benchbase_config_path"] = str(Path(logdir) / "benchmark.xml")
+        if "oltpr_sf" in mythril_args:
+            if conf_etree.getroot().find("scalefactor") is not None:
+                conf_etree.getroot().find("scalefactor").text = str(mythril_args.oltp_sf)
+            if conf_etree.getroot().find("terminals") is not None:
+                conf_etree.getroot().find("terminals").text = str(mythril_args.oltp_num_terminals)
+            if conf_etree.getroot().find("works") is not None:
+                works = conf_etree.getroot().find("works").find("work")
+                if works.find("time") is not None:
+                    conf_etree.getroot().find("works").find("work").find("time").text = str(mythril_args.oltp_duration)
+                if works.find("warmup") is not None:
+                    conf_etree.getroot().find("works").find("work").find("warmup").text = str(mythril_args.oltp_warmup)
+        conf_etree.write("benchmark.xml")
+        config["mythril"]["benchbase_config_path"] = str(Path(logdir) / "benchmark.xml")
 
     config["mythril"]["postgres_data"] = f"pgdata{port}"
     config["mythril"]["postgres_port"] = port
-    config["mythril"]["data_snapshot_path"] = "{mythril_dir}/{snapshot}".format(mythril_dir=mythril_dir, snapshot=mythril_args.data_snapshot_path)
+    if mythril_args.data_snapshot_path.startswith("/"):
+        config["mythril"]["data_snapshot_path"] = mythril_args.data_snapshot_path
+    else:
+        config["mythril"]["data_snapshot_path"] = "{mythril_dir}/{snapshot}".format(mythril_dir=mythril_dir, snapshot=mythril_args.data_snapshot_path)
     config["mythril"]["tensorboard_path"] = "tboard/"
     config["mythril"]["output_log_path"] = "."
     config["mythril"]["repository_path"] = "repository/"
@@ -109,9 +121,8 @@ def _mutate_common_config(logdir, mythril_dir, hpo_config, mythril_args):
     config["mythril"]["index_repr"] = hpo_config.index_repr
     config["mythril"]["normalize_state"] = hpo_config.normalize_state
     config["mythril"]["normalize_reward"] = hpo_config.normalize_reward
-    config["mythril"]["maximize_state"] = hpo_config.maximize_state
-    config["mythril"]["maximize_knobs_only"] = hpo_config.maximize_knobs_only
-    config["mythril"]["start_reset"] = hpo_config.start_reset
+    config["mythril"]["reset_policy"] = hpo_config.reset_policy
+    config["mythril"]["reset_purity"] = hpo_config.reset_purity
     config["mythril"]["gamma"] = hpo_config.gamma
     config["mythril"]["grad_clip"] = hpo_config.grad_clip
     config["mythril"]["reward_scaler"] = hpo_config.reward_scaler
@@ -120,11 +131,23 @@ def _mutate_common_config(logdir, mythril_dir, hpo_config, mythril_args):
     config["mythril"]["workload_eval_inverse"] = hpo_config.workload_eval_inverse
     config["mythril"]["workload_eval_reset"] = hpo_config.workload_eval_reset
     config["mythril"]["scale_noise_perturb"] = hpo_config.scale_noise_perturb
+    if "baseline_config" in hpo_config:
+        config["mythril"]["baseline_config"] = hpo_config.baseline_config
+
+    config["mythril"]["constraints"]["memory_constraint"] = hpo_config.memory_constraint
+    config["mythril"]["constraints"]["partial_account"] = hpo_config.partial_account
+    config["mythril"]["constraints"]["memory_budget"] = hpo_config.memory_budget
+    config["mythril"]["constraints"]["query_constraint"] = hpo_config.query_constraint
+    config["mythril"]["constraints"]["query_tolerance"] = hpo_config.query_tolerance
+    config["mythril"]["constraints"]["reject"] = hpo_config.reject
 
     if "index_vae" in hpo_config:
         # Enable index_vae.
         config["mythril"]["index_vae_metadata"]["index_vae"] = hpo_config.index_vae
-        config["mythril"]["index_vae_metadata"]["embeddings"] = f"{mythril_dir}/{hpo_config.embeddings}"
+        if hpo_config.embeddings.startswith("/"):
+            config["mythril"]["index_vae_metadata"]["embeddings"] = hpo_config.embeddings
+        else:
+            config["mythril"]["index_vae_metadata"]["embeddings"] = f"{mythril_dir}/{hpo_config.embeddings}"
 
     if "lsc_enabled" in hpo_config:
         config["mythril"]["lsc_parameters"]["lsc_enabled"] = hpo_config.lsc_enabled
@@ -175,15 +198,24 @@ def _construct_common_config(args):
         # Whether to normalize reward or not.
         "normalize_reward": tune.choice([False, True]),
         # Whether to employ maximize state reset().
-        "maximize_state": tune.choice([False, True]),
-        "maximize_knobs_only": False,
-        "start_reset": tune.sample_from(lambda spc: bool(np.random.choice([False, True])) if spc["config"]["maximize_state"] else False),
+        "reset_policy": tune.choice(["MAXIMAL", "UCB"]),
+        "reset_purity": tune.choice(["SHADOW", "PURE", "LOCAL_SHADOW"]),
         # Discount.
         "gamma": tune.choice([0, 0.9, 0.95, 0.995, 1.0]),
         # Gradient Clipping.
         "grad_clip": tune.choice([1.0, 5.0, 10.0]),
         # Stash the mythril arguments here.
         "mythril_args": args,
+
+        # Constraints.
+        "constraints": {
+            "memory_constraint": False,
+            "partial_account": True,
+            "memory_budget": "1GB",
+            "query_constraint": False,
+            "query_tolerance": "10%",
+            "reject": False,
+        },
     }
 
 
