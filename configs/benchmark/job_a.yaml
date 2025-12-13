@@ -193,6 +193,7 @@ mythril:
       enable_nestloop:    {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
       enable_sort:                            {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
       enable_gathermerge:                     {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+      enable_group_by_reordering:             {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
       enable_hashagg:                         {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
       enable_parallel_hash:                   {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
       enable_material:                        {type: "boolean", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}

@@ -48,15 +48,21 @@ METRICS_SPECIFICATION = {
         "filter_db": False,
         "per_table": False,
         "valid_keys": [
-            "checkpoint_write_time",
-            "buffers_backend_fsync",
             "buffers_clean",
-            "buffers_checkpoint",
-            "checkpoints_req",
-            "checkpoints_timed",
-            "buffers_alloc",
-            "buffers_backend",
             "maxwritten_clean",
+            "buffers_alloc",
+        ],
+    },
+    "pg_stat_checkpointer": {
+        "filter_db": False,
+        "per_table": False,
+        "valid_keys": [
+            "num_timed",
+            "num_requested",
+            "num_done",
+            "write_time",
+            "buffers_written",
+            "slru_written",
         ],
     },
     "pg_stat_database_conflicts": {

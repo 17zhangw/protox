@@ -201,6 +201,10 @@ mythril:
     # Sets the maximum number of parallel workers that can be started by a single utility command.
     max_parallel_maintenance_workers:       {type: "integer", min: 0, max: 20, quantize: -1, log_scale: 0, unit: 0}
 
+    huge_pages:                             {type: "binary_enum", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    io_method:                              {type: "binary_enum", min: 0, max: 1, quantize: 0, log_scale: 0, unit: 0}
+    io_workers:                             {type: "integer", min: 1, max: 8, quantize: -1, log_scale: 0, unit: 0}
+
     # Sets the number of disk-page buffers in shared memory for WAL (8kB unit) -- 128MB.
     wal_buffers:                            {type: "bytes", min: 8, max: 16384, quantize: 0, log_scale: 1, unit: 8192}
     # Compresses full-page writes written in WAL file with specified method.
