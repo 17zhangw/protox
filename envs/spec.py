@@ -40,15 +40,15 @@ class Spec(object):
 
     workload: Workload = None
 
-    def __build_observation_space(self, seed):
+    def __build_observation_space(self, use_memory, seed):
         if self.metric_state == "metric":
-            return MetricStateSpace(self.tables, seed)
+            return MetricStateSpace(self.tables, use_memory, seed)
         elif self.metric_state == "structure":
-            return StructureStateSpace(self.action_space, False, seed)
+            return StructureStateSpace(self.action_space, False, use_memory, seed)
         elif self.metric_state == "structure_normalize":
-            return StructureStateSpace(self.action_space, True, seed)
+            return StructureStateSpace(self.action_space, True, use_memory, seed)
         elif self.metric_state == "structure_normalize_nodiv":
-            return StructureStateSpace(self.action_space, True, seed, div=False)
+            return StructureStateSpace(self.action_space, True, use_memory, seed, div=False)
         else:
             assert False
 
@@ -87,8 +87,9 @@ class Spec(object):
         logging.debug("%s", self.connection)
 
         self.original_benchbase_config_path = self.benchbase_config_path
-        shutil.copy(self.benchbase_config_path, self.benchbase_config_path + f"_{self.postgres_port}")
-        self.benchbase_config_path = self.benchbase_config_path + f"_{self.postgres_port}"
+        if self.benchbase_config_path != "" and Path(self.benchbase_config_path).exists():
+            shutil.copy(self.benchbase_config_path, self.benchbase_config_path + f"_{self.postgres_port}")
+            self.benchbase_config_path = self.benchbase_config_path + f"_{self.postgres_port}"
 
         with open(benchmark_config_path) as f:
             config = yaml.safe_load(f)["mythril"]
@@ -120,6 +121,10 @@ class Spec(object):
         if hasattr(self, "per_query_scan_method") and self.per_query_scan_method:
             per_query_scans = self.workload.query_aliases
 
+        per_query_ctes = {}
+        if hasattr(self, "per_query_cte_materialize") and self.per_query_cte_materialize:
+            per_query_ctes = self.workload.cterefs
+
         per_query_parallel = {}
         if hasattr(self, "per_query_select_parallel") and self.per_query_select_parallel:
             per_query_parallel = self.workload.query_aliases
@@ -137,6 +142,7 @@ class Spec(object):
                 seed,
                 per_query_parallel=per_query_parallel,
                 per_query_scans=per_query_scans,
+                per_query_ctes=per_query_ctes,
                 query_names=self.workload.order)
         else:
             ks = None
@@ -163,6 +169,7 @@ class Spec(object):
                 index_vae_config=(vae_config, self.index_vae_metadata.get("embeddings_pth", None)),
                 attributes_overwrite=modified_attrs,
                 tbl_include_subsets=tbl_include_subsets,
+                tbl_wheres=self.workload.tbl_wheres,
                 lsc=lsc,
                 scale_noise_perturb=self.scale_noise_perturb,
                 index_space_aux_type=getattr(self, "index_space_aux_type", False),
@@ -177,7 +184,7 @@ class Spec(object):
         # Update the maximum number of columns?
 
         self.action_space = ActionSpace(ks, idxs, seed, lsc_embed)
-        self.observation_space = self.__build_observation_space(seed)
+        self.observation_space = self.__build_observation_space(self.constraints["memory_constraint"], seed)
 
     def save_state(self):
         # Save what can't be reconstructed correctly.

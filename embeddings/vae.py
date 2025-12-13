@@ -260,6 +260,7 @@ class VAE(nn.Module):
         self.encoder = Encoder(input_dim, hidden_sizes, latent_dim, act, mean_output_act=mean_output_act)
         self.decoder = Decoder(latent_dim, reversed(hidden_sizes), input_dim, act)
         init_modules(self.encoder, self.decoder, bias_init, weight_init, weight_uniform)
+        print(input_dim, hidden_sizes)
 
         self.input_dim = input_dim
         self.max_categorical = max_categorical

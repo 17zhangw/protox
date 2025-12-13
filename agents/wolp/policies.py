@@ -269,6 +269,21 @@ class WolpPolicy(BasePolicy):
         # Smear the action.
         random = (epsilon_greedy > 0.0) and (np.random.rand() < epsilon_greedy)
         env_actions, sample_actions, actions_dim = self.action_space.actor_smear_action(raw_action, neighbor_parameters, random=random)
+        if states.shape[0] == 1:
+            # Summarize...
+            json_obj = self.action_space.to_jsonable(env_actions)
+            summary = {
+                "knobs": {
+                    k: { "num": len(v), "min": float(min(v)), "max": float(max(v)), }
+                    for k, v in json_obj[0].items() if not k.startswith("Q")
+                },
+                "indexes": [ idx.strip() for idx in json_obj[1] ],
+                "qknobs": {
+                    k: { "num": len(v), "min": float(min(v)), "max": float(max(v)), }
+                    for k, v in json_obj[0].items() if k.startswith("Q")
+                }
+            }
+            logging.debug(f"[wolp_act]: %s", json.dumps(summary))
 
         if random_act:
             # If we want a random action, don't use Q-value estimate.

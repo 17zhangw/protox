@@ -24,6 +24,7 @@ wolp_params:
     knob_span: 1                    # Quantization span that should be applied to knobs.
     index_num_samples: 100          # Number of samples to try and obtain.
     index_subset: True
+    index_workload_prune: False
 
   weight_init: "orthogonal"         # xavier_[uniform/normal] or orthogonal
   bias_zero: True

@@ -1,3 +1,4 @@
+import json
 import psutil
 import os
 import shutil
@@ -23,7 +24,8 @@ from envs.spec import Spec
 from envs.repository import Repository
 from envs.reward import RewardUtility
 from envs.workload import Workload
-from envs.spaces.utils import check_subspace, fetch_server_indexes, fetch_server_knobs
+from envs.spaces.utils import check_subspace, fetch_server_indexes, fetch_server_knobs, fetch_class
+from utils.derive_repo_config import derive_repo_config
 
 
 class PostgresEnv(gym.Env):
@@ -89,12 +91,86 @@ class PostgresEnv(gym.Env):
         self.horizon = horizon
         self.timeout = timeout
         self.reward_utility = reward_utility
+        self.constraints = spec.constraints
+        self.use_memory = self.constraints["memory_constraint"]
 
         # Construct repository.
         Path(spec.repository_path).mkdir(parents=True, exist_ok=True)
         self.repository = Repository(spec.repository_path, self.action_space)
         self.log_step = 0
         self.oltp_workload = spec.oltp_workload
+        self.baseline_config = spec.baseline_config if hasattr(spec, "baseline_config") else None
+
+    def _reward_constraints(self, success, results, update, qmetrics=None):
+        metric, reward = None, None
+        memviolate = False
+        qviolate = False
+
+        if success and (self.baseline_state is not None):
+            # If not success, the DBMS may not actually be started up and running.
+            memviolate = False if not self.use_memory else self._inject_memory()[0]
+            if self.constraints["query_constraint"] and qmetrics:
+                qabs = self.constraints["query_tolerance"].endswith("%")
+                delta = float(self.constraints["query_tolerance"][:-1])
+
+                for qid, (_, runtime, timeout) in qmetrics.items():
+                    assert qid in self.baseline_relative_metric, print(qid)
+                    base_runtime = self.baseline_relative_metric[qid][1]
+                    base_runtime = base_runtime if base_runtime else (self.timeout * 1e6)
+                    base_runtime = min(base_runtime, self.timeout * 1e6)
+
+                    base_timeout = self.baseline_relative_metric[qid][2]
+                    delta = (base_runtime * delta/100.) if qabs else (delta * 1e6)
+
+                    if timeout and base_timeout:
+                        # Don't penalize if both timeout since we don't know.
+                        continue
+                    elif timeout and (not base_timeout):
+                        logging.debug(f"Q:{qid} timed out but base did not...")
+                        qviolate = True
+                        break
+                    elif (not timeout) and base_timeout:
+                        # No problem if we don't timeout and baseline timed out.
+                        continue
+                    elif (not timeout) and (runtime > base_runtime) and (runtime - base_runtime >= delta):
+                        logging.debug(f"Q:{qid} {runtime} > {base_runtime} w. {delta} so qviolate.")
+                        qviolate = True
+                        break
+
+        if self.reward_utility is not None:
+            did_error = (not success) or memviolate or qviolate
+            metric, reward = self.reward_utility(result_dir=results, update=update, did_error=did_error)
+
+        return metric, reward, (memviolate or qviolate)
+
+    def _inject_memory(self, state=None, error=False, old_bound=None):
+        if self.use_memory:
+            if not error:
+                partial = self.constraints.get("partial_account", True)
+                kc = self.action_space.get_knob_space().state_container
+                qknob = self.action_space.get_knob_space().get_query_level_knobs(kc)
+                exist_mem, mem = self.workload.compute_used_mem(self.connection, partial, kc, qknob)
+
+                hard_limit = None
+                if isinstance(self.constraints["memory_budget"], int) or isinstance(self.constraints["memory_budget"], float):
+                    hard_limit = float(self.constraints["memory_budget"])
+                elif self.constraints["memory_budget"].lower().endswith("gb"):
+                    hard_limit = float(self.constraints["memory_budget"].lower().split("gb")[0])
+                else:
+                    assert self.constraints["memory_budget"].endswith("x")
+                    mult = float(self.constraints["memory_budget"].split("x")[0])
+                    hard_limit = exist_mem * mult
+
+                bound = min(mem / hard_limit, 1.)
+            else:
+                assert old_bound is not None
+                bound = old_bound
+
+            if state is not None:
+                logging.debug(f"Memory Constraint injecting {bound}.")
+                state["memconstraint"] = np.array([bound], dtype=np.float32)
+            return bound >= 1.0, bound
+        return False, None
 
     def _start_with_config_changes(self, conf_changes=None, timeout=None, dump_page_cache=False, save_snapshot=False):
         start_time = time.time()
@@ -104,7 +180,7 @@ class PostgresEnv(gym.Env):
 
         # Install the new configuration changes.
         if conf_changes is not None:
-            conf_changes.append("shared_preload_libraries='pg_hint_plan'")
+            conf_changes.append("shared_preload_libraries='pg_hint_plan,hypopg'")
 
             with open(f"{self.env_spec.postgres_data}/postgresql.auto.conf", "w") as f:
                 for change in conf_changes:
@@ -206,6 +282,15 @@ class PostgresEnv(gym.Env):
                         pass
                 logging.info("CANCEL Function finished!")
 
+            # Start with config changes for index builds.
+            cc = [
+                "maintenance_work_mem = '4GB'",
+                "max_worker_processes = 10",
+                "max_parallel_workers = 10",
+                "max_parallel_maintenance_workers = 10",
+            ]
+            assert self._start_with_config_changes(conf_changes=cc, timeout=self.env_spec.connect_timeout)
+
             with psycopg.connect(self.env_spec.connection, autocommit=True, prepare_threshold=None) as conn:
                 conn.execute("SET maintenance_work_mem = '4GB'")
                 conn.execute("SET statement_timeout = 300000")
@@ -306,6 +391,7 @@ class PostgresEnv(gym.Env):
         config = None if options is None else options.get("config", None)
         accum_metric = None if options is None else options.get("accum_metric", None)
         load = False if options is None else options.get("load", False)
+        reset_lsc = None if options is None else options.get("reset_lsc", None)
 
         self.current_step = 0
         info = {}
@@ -348,27 +434,76 @@ class PostgresEnv(gym.Env):
             logging.debug("[Finished] Reset to state (config): %s", config)
 
         elif self.baseline_state is None:
+            assert config is None
             # Restore a pristine snapshot of the world.
             self.restore_pristine_snapshot()
+
+            if self.baseline_config is not None:
+                logging.info(f"Loading from {self.baseline_config}")
+                # Load the baseline configuration.
+                use_template = False
+                use_booster = False
+                if "--template" in self.baseline_config:
+                    use_template = True
+                    self.baseline_config = self.baseline_config.replace("--template", "")
+                if "--booster" in self.baseline_config:
+                    use_booster = True
+                    self.baseline_config = self.baseline_config.replace("--booster", "")
+
+                assert Path(self.baseline_config).exists(), print(self.baseline_config)
+                knobs, index_sqls = derive_repo_config(self, self.baseline_config, use_template, self.env_spec.benchmark, use_booster=use_booster)
+                # Rename existing so we don't name conflict.
+                index_sqls = [isq.replace(" eeindex", " eeeindex") for isq in index_sqls]
+                index_sqls = [isq.replace(" eindex", " eeindex") for isq in index_sqls]
+                index_sqls = [isq.replace(" index", " eindex") for isq in index_sqls]
+
+                self.action_space.reset(**{
+                    "connection": self.connection,
+                    "config": None,
+                    "workload": self.workload,
+                    "no_lsc": True,
+                })
+
+                args = {
+                    "benchbase_config_path": self.env_spec.benchbase_config_path,
+                    "original_benchbase_config_path": self.env_spec.original_benchbase_config_path,
+                    "load": load or (self.oltp_workload and self.horizon == 1),
+                }
+
+                # Maneuver the state into the requested state/config.
+                cc, _ = self.action_space.get_knob_space().generate_plan(knobs, no_check=True)
+                self.shift_state(cc, index_sqls, ignore_error=True)
+                # Try to pipe the query level knob through.
+                # Then try to pipe the config through to the reset() logic.
+                config = (knobs, [])
 
             assert not self.replay
 
             # On the first time, run the benchmark to get the baseline.
-            success, metric, _, results, state, mutilated, _, accum_metric = self.workload.execute(
+            success, results, state, mutilated, _, accum_metric, _ = self.workload.execute(
                 connection=self.connection,
-                reward_utility=self.reward_utility,
                 env_spec=self.env_spec,
                 timeout=self.timeout,
+                action=config,
                 current_state=None,
-                update=False)
+            )
+
+            # Get the metric.
+            metric, _, _ = self._reward_constraints(success, results, False)
+            logging.info(f"Baseline Benchmark iteration with metric {metric}")
 
             # Save the baseline run.
             local["mv"][results, f"{self.env_spec.repository_path}/baseline"].run()
 
             # Ensure that the first run succeeds.
             assert success
-            # Ensure that the action is not mutilated since there is none!
-            assert mutilated is None
+
+            if config is not None:
+                # Propagate mutilated forwards...
+                config = config if mutilated is None else mutilated
+            else:
+                # Ensure that the action is not mutilated since there is none!
+                assert mutilated is None
 
             # Set the metric workload.
             self.env_spec.workload.set_workload_timeout(metric)
@@ -377,6 +512,7 @@ class PostgresEnv(gym.Env):
             _, reward = self.reward_utility(metric=metric, update=False, did_error=False)
             self.baseline_state = state
             self.baseline_metric = metric
+            self.baseline_relative_metric = accum_metric
             self.current_state = self.baseline_state.copy()
             info = {"baseline_metric": metric, "baseline_reward": reward, "accum_metric": accum_metric}
 
@@ -392,6 +528,7 @@ class PostgresEnv(gym.Env):
             "connection": self.connection,
             "config": config,
             "workload": self.workload,
+            "reset_lsc": reset_lsc,
         })
 
         if self.env_spec.workload_eval_reset:
@@ -417,6 +554,7 @@ class PostgresEnv(gym.Env):
 
         # Set the correct current LSC.
         self.current_state["lsc"] = self.action_space.get_current_lsc()
+        self._inject_memory(self.current_state)
         return self.current_state, info
 
 
@@ -429,11 +567,14 @@ class PostgresEnv(gym.Env):
         mutilated = None
 
         # Log the action in debug mode.
-        logging.debug("Selected action: %s", self.action_space.to_jsonable([action]))
+        logging.debug("[step]: %s", self.action_space.to_jsonable([action]))
         # Get the previous metric and penalty a-priori.
         previous_metric = self.reward_utility.previous_result
         worst_metric, worst_reward = self.reward_utility(did_error=True, update=False)
+
+        # Get the memory.
         old_lsc = self.action_space.get_current_lsc()
+        _, old_bound = self._inject_memory(state=None, error=False, old_bound=None)
 
         args = {
             "benchbase_config_path": self.env_spec.benchbase_config_path,
@@ -457,19 +598,40 @@ class PostgresEnv(gym.Env):
         config_changes, sql_commands = self.action_space.generate_action_plan(action, **args)
         # Attempt to maneuver to the new state.
         success = self.shift_state(config_changes, sql_commands)
+        violate = False
+        stattables = None
 
         if success:
+            stattables = fetch_class(self.connection)
+
             # Evaluate the benchmark.
             start_time = time.time()
-            success, metric, reward, results, next_state, mutilated, q_timeout, accum_metric = self.workload.execute(
+            success, results, next_state, mutilated, q_timeout, accum_metric, qhints = self.workload.execute(
                 connection=self.connection,
-                reward_utility=self.reward_utility,
                 env_spec=self.env_spec,
                 timeout=self.timeout,
                 current_state=self.current_state.copy(),
                 action=action,
-                update=True,
             )
+
+            consolidated = {
+                "knobs": {
+                    k: v
+                    for k, v in fetch_server_knobs(
+                        self.connection,
+                        self.env_spec.tables,
+                        self.action_space.get_knob_space().knobs,
+                        workload=None,
+                    ).items() if not k.startswith("Q")
+                },
+                "indexes": pre_indexes + [sc for sc in sql_commands if "index" in sc.lower()],
+                "qknobs": qhints,
+            }
+            with open(f"{results}/config.json", "w") as f:
+                json.dump(consolidated, f, indent=2)
+
+            metric, reward, violate = self._reward_constraints(success, results, True, qmetrics=accum_metric)
+            logging.info(f"Benchmark iteration with metric {metric} (reward: {reward}) (q_timeout: {q_timeout})")
 
             if self.logger is not None:
                 self.logger.record("instr_time/workload_eval", time.time() - start_time)
@@ -477,6 +639,7 @@ class PostgresEnv(gym.Env):
             # Illegal configuration.
             logging.info("Found illegal configuration: %s. %s", config_changes, config_changes)
             self.action_space.flag_illegal(action, self.connection)
+            violate = True
 
         if self.oltp_workload and self.horizon > 1:
             # If horizon = 1, then we're going to reset anyways. So easier to just untar the original archive.
@@ -491,12 +654,13 @@ class PostgresEnv(gym.Env):
 
             # Always incorporate the true state information to the repository.
             action = action if mutilated is None else mutilated
-            self.repository.add(action, metric, reward, results, conf_path=conf_path, prior_state=(old_state_container, pre_indexes))
+            _, repo_dir = self.repository.add(action, metric, reward, results, conf_path=conf_path, prior_state=(old_state_container, pre_indexes), stattables=stattables)
         else:
             # Since we reached an invalid area, just set the next state to be the current state.
             metric, reward = self.reward_utility(did_error=True)
             truncated = True
             next_state = self.current_state.copy()
+            repo_dir = None
 
         if mutilated is not None:
             with torch.no_grad():
@@ -514,9 +678,26 @@ class PostgresEnv(gym.Env):
 
         # Set the current LSC after advancing.
         self.current_state["lsc"] = self.action_space.get_current_lsc()
+        # If truncated, the action failed to deploy.
+        self._inject_memory(self.current_state, error=truncated, old_bound=old_bound)
 
         assert check_subspace(self.env_spec.observation_space, self.current_state)
-        info = {"lsc": old_lsc.flatten(), "metric": metric, "mutilated_embed": mutilated, "q_timeout": q_timeout, "accum_metric": accum_metric}
+        info = {
+            "lsc": old_lsc.flatten(),
+            "metric": metric,
+            "mutilated_embed": mutilated,
+            "q_timeout": q_timeout,
+            "accum_metric": accum_metric,
+            "violate": violate,
+            "repo_dir": repo_dir,
+        }
+
+        if violate and self.constraints["reject"]:
+            # Override the truncation flag if reject and we violate.
+            # Do this here so the "accounting" has already been done...
+            # Treat reject as just a normal "reset" path.
+            truncated = True
+
         return self.current_state, reward, (self.current_step >= self.horizon), truncated, info
 
     def shift_state(self, config_changes, sql_commands, dump_page_cache=False, ignore_error=False):

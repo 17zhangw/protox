@@ -155,6 +155,8 @@ def construct_epoch_end(val_dl, config, hooks, model_folder):
             # Save.
             mf = Path(model_folder) / f"epoch{trainer.epoch}"
             mf.mkdir(parents=True, exist_ok=True)
+            with open(f"{mf}/time.txt", "w") as f:
+                f.write(str(time.time()))
             hooks.save_models(trainer, str(mf), str(trainer.epoch))
 
         force = kwargs.get("force", False)
@@ -194,13 +196,19 @@ def construct_epoch_end(val_dl, config, hooks, model_folder):
     return epoch_end
 
 
-def build_trainer(config, input_file, trial_dir, benchmark_config, train_size, dataloader_num_workers=0, disable_tqdm=False):
+def build_trainer(config, input_file, trial_dir, benchmark_config, specialization, train_size, dataloader_num_workers=0, disable_tqdm=False):
     max_cat_features = 0
     max_attrs = 0
 
     # Load the benchmark configuration.
     with open(benchmark_config, "r") as f:
         data = yaml.safe_load(f)
+
+        if specialization is not None:
+            # Attach the query specialization...
+            data["mythril"]["query_spec"]["query_directory"] = str(specialization)
+            data["mythril"]["query_spec"]["query_order"] = str(specialization / "d_order.txt")
+
         max_attrs, max_cat_features, att_usage, class_mapping = _fetch_index_parameters(data)
 
     config["class_mapping"] = {}
@@ -300,6 +308,7 @@ def create_train_parser(subparser):
     parser.add_argument("--config", type=Path, default="embeddings/config.json")
     parser.add_argument("--num-trials", type=int, default=1)
     parser.add_argument("--benchmark-config", type=Path, required=True)
+    parser.add_argument("--specialization", type=Path, default=None)
     parser.add_argument("--train-size", type=float, default=0.8)
 
     # Arguments for all models.
@@ -359,6 +368,7 @@ def execute_manual(args, space):
             f"{args.output_dir}/out.parquet",
             trial_dir,
             args.benchmark_config,
+            args.specialization,
             args.train_size
         )
 
@@ -420,6 +430,7 @@ def hpo_train(config, args):
         f"{output_dir}/out.parquet",
         trial_dir,
         args["benchmark_config"],
+        args["specialization"],
         args["train_size"],
         dataloader_num_workers=0,
         disable_tqdm=True,

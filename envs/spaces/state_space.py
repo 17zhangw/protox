@@ -45,7 +45,8 @@ class MetricStateSpace(spaces.Dict):
     def metrics(self):
         return True
 
-    def __init__(self, tables: list[str], seed):
+    def __init__(self, tables: list[str], use_memory, seed):
+        self.use_memory = use_memory
         self.tables = tables
         self.internal_spaces = {}
         for key, spec in METRICS_SPECIFICATION.items():
@@ -60,6 +61,8 @@ class MetricStateSpace(spaces.Dict):
                     assert metric not in self.internal_spaces
                     self.internal_spaces[metric] = Box(low=-np.inf, high=np.inf)
         self.internal_spaces["lsc"] = Box(low=-1, high=1.)
+        if use_memory:
+            self.internal_spaces["memconstraint"] = Box(low=0., high=1.)
         super().__init__(self.internal_spaces, seed)
 
     def check_benchbase(self, **kwargs):
@@ -146,6 +149,9 @@ class MetricStateSpace(spaces.Dict):
 
     def construct_metric_delta(self, initial_metrics, final_metrics):
         metrics = {"lsc": np.array([-1], dtype=np.float32)}
+        if self.use_memory:
+            metrics["memconstraint"] = np.array([0.], dtype=np.float32)
+
         for key, spec in METRICS_SPECIFICATION.items():
             assert key in initial_metrics
             initial_data = initial_metrics[key]
@@ -175,6 +181,9 @@ class MetricStateSpace(spaces.Dict):
         connection = kwargs["connection"]
 
         metric_data = {"lsc": np.array([-1], dtype=np.float32)}
+        if self.use_memory:
+            metric_data["memconstraint"] = np.array([0.], dtype=np.float32)
+
         with connection.cursor(row_factory=dict_row) as cursor:
             for key in METRICS_SPECIFICATION.keys():
                 records = cursor.execute(f"SELECT * FROM {key}")
@@ -188,7 +197,7 @@ class MetricStateSpace(spaces.Dict):
             for key, value in datum.items():
                 if key not in comb_data:
                     comb_data[key] = value
-                elif key != "lsc":
+                elif key != "lsc" and key != "memconstraint":
                     # Assume that each datum is "localized".
                     comb_data[key] += value
         assert check_subspace(self, comb_data)
@@ -201,8 +210,9 @@ class StructureStateSpace(spaces.Dict):
     normalize = False
     div = True
 
-    def __init__(self, action_space, normalize, seed, div=True):
+    def __init__(self, action_space, normalize, use_memory, seed, div=True):
         self.action_space = action_space
+        self.use_memory = use_memory
         self.normalize = normalize
         self.div = div
 
@@ -213,6 +223,8 @@ class StructureStateSpace(spaces.Dict):
 
         self.internal_spaces["index"] = Box(low=-np.inf, high=np.inf, shape=[action_space.get_index_space().get_critic_dim()])
         self.internal_spaces["lsc"] = Box(low=-1, high=1.)
+        if self.use_memory:
+            self.internal_spaces["memconstraint"] = Box(low=0., high=1.)
         super().__init__(self.internal_spaces, seed)
 
     def metrics(self):
@@ -238,7 +250,7 @@ class StructureStateSpace(spaces.Dict):
 
         # Handle indexes.
         current_bias = 0 if self.action_space.get_index_space().lsc is None else self.action_space.get_index_space().lsc.current_bias()
-        indexes = self.action_space.get_index_space().get_state_with_bias(None)
+        indexes = self.action_space.get_index_space().get_state(None)
         if action is not None:
             indexes.append((action[1], current_bias))
 
@@ -293,5 +305,6 @@ class StructureStateSpace(spaces.Dict):
             "knobs": knob_state,
             "index": index_state,
             "lsc": current_bias,
+            "memconstraint": 0.,
         }
         return state

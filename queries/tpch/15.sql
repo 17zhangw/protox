@@ -1,15 +1,14 @@
-
-create or replace view revenue0_PID (supplier_no, total_revenue) as
+with revenue0 as NOT MATERIALIZED (
 	select
-		l_suppkey,
-		sum(l_extendedprice * (1 - l_discount))
+		l_suppkey as supplier_no,
+		sum(l_extendedprice * (1 - l_discount)) as total_revenue
 	from
 		lineitem
 	where
 		l_shipdate >= date '1994-09-01'
-		and l_shipdate < date '1994-09-01' + interval '3' month
+		and l_shipdate < date '1994-09-01' + interval '3 month'
 	group by
-		l_suppkey;
+		l_suppkey)
 
 
 select
@@ -20,16 +19,14 @@ select
 	total_revenue
 from
 	supplier,
-	revenue0_PID r0
+	revenue0
 where
 	s_suppkey = supplier_no
 	and total_revenue = (
 		select
 			max(total_revenue)
 		from
-			revenue0_PID r1
+			revenue0
 	)
 order by
 	s_suppkey;
-
-drop view revenue0_PID;

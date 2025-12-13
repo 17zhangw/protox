@@ -13,7 +13,7 @@ from pathlib import Path
 from dateutil.parser import parse
 
 import sys
-sys.path.append(".")
+sys.path.append("/home/wz2/mythril")
 
 from envs.spec import Spec
 from envs.pg_env import PostgresEnv

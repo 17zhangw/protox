@@ -411,3 +411,36 @@ class OneHotIndexPolicy(IndexPolicy):
         if self.deterministic:
             return torch.clamp(proto + noise, 0., 1.)
         return proto
+
+    def prune(self, candidates, tbl_wheres, rel_metadata):
+        ncands = []
+        colstart = 2 if self.index_space_aux_type else 1
+        for candidate in candidates:
+            num_cols = len(candidate[colstart:-self.index_space_aux_include - self.index_space_aux_md])
+            # Process.
+            _, tblname, colnames, colidxes, _, _ = self.act_to_columns(candidate, rel_metadata)
+
+            attrsets = tbl_wheres[tblname]
+            if len(attrsets) == 0:
+                # This table is not actually referenced...
+                continue
+
+            preserve_cols = []
+            for colname, colidx in zip(colnames, colidxes):
+                if any([colname in attrset for attrset in attrsets]):
+                    # This column name is in [WHERE] so preserve.
+                    preserve_cols.append(colidx + 1)
+                    attrsets = [aset for aset in attrsets if colname in aset]
+            if len(preserve_cols) == 0:
+                # No more preserving.
+                continue
+
+            candidate = list(candidate)
+            for i, colidx in enumerate(range(colstart, colstart+num_cols)):
+                if i < len(preserve_cols):
+                    candidate[colidx] = preserve_cols[i]
+                else:
+                    candidate[colidx] = 0
+            # OK. This is a candidate.
+            ncands.append(tuple(candidate))
+        return ncands

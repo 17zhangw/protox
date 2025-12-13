@@ -92,13 +92,18 @@ class LSC(object):
     def unfreeze(self):
         self.frozen = False
 
-    def reset(self):
+    def reset(self, reset_lsc=None):
         if self.frozen:
             return
 
         # Advance the episode count.
         self.num_episodes += 1
-        if (self.num_episodes <= self.lsc_shift_after) or ((self.num_episodes - self.lsc_shift_after) % self.lsc_shift_schedule_eps_freq != 0):
+        if reset_lsc is not None:
+            # Reset to the prescribed LSC.
+            self.num_steps = 0
+            self.lsc_shift = reset_lsc.copy()
+            logging.info("LSC Bias Force-Reset: %s", self.lsc_shift)
+        elif (self.num_episodes <= self.lsc_shift_after) or ((self.num_episodes - self.lsc_shift_after) % self.lsc_shift_schedule_eps_freq != 0):
             # Reset the number of steps we've taken.
             self.num_steps = 0
         else:
@@ -111,3 +116,18 @@ class LSC(object):
             self.lsc_shift[:bound] += self.lsc_shift_increment[:bound]
             self.lsc_shift = self.lsc_shift % self.lsc_shift_max
             logging.info("LSC Bias Update: %s", self.lsc_shift)
+
+    def save_for_reset(self):
+        cpos = self.num_steps % self.horizon
+        future = np.zeros(self.horizon*2, dtype=np.float32)
+        future[:self.horizon] = self.lsc_shift[:self.horizon]
+        future[self.horizon:] = ((self.lsc_shift + self.lsc_shift_increment) % self.lsc_shift_max)[:self.horizon]
+        # Get the "expected" future.
+        return future[cpos:cpos+self.horizon]
+
+    def reset_shift_k(self, k):
+        future = np.copy(self.lsc_shift)
+        for _ in range(k):
+            future[:bound] += self.lsc_shift_increment[:bound]
+            future = future % self.lsc_shift_max
+        return future

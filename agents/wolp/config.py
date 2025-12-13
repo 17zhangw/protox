@@ -104,6 +104,7 @@ def _mutate_wolp_config(mythril_dir, hpo_config, mythril_args):
     wolp["neighbor_parameters"]["knob_span"] = hpo_config.knob_span
     wolp["neighbor_parameters"]["index_num_samples"] = hpo_config.index_num_samples
     wolp["neighbor_parameters"]["index_subset"] = hpo_config.index_subset
+    wolp["neighbor_parameters"]["index_workload_prune"] = hpo_config.index_workload_prune
 
     wolp["weight_init"] = hpo_config.weight_init
     wolp["bias_zero"] = hpo_config.bias_zero
@@ -159,6 +160,7 @@ def _construct_wolp_config():
             "knob_span": tune.choice([1, 2]),
             "index_num_samples": 1,
             "index_subset": tune.choice([False, True]),
+            "index_workload_prune": tune.choice([False, True]),
         },
 
         # LSC Parameters.

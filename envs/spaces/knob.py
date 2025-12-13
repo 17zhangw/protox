@@ -20,7 +20,9 @@ def full_knob_name(table=None, query=None, knob_name=None):
 
 def _parse_categorical(type_str):
     if type_str == "scanmethod_enum_categorical":
-        return SettingType.SCANMETHOD_ENUM_CATEGORICAL, 2
+        return SettingType.SCANMETHOD_ENUM_CATEGORICAL, 3
+    elif type_str == "cte_materialize_categorical":
+        return SettingType.CTE_MATERIALIZE_CATEGORICAL, 3
     elif type_str == "magic_hintset_enum_categorical":
         return SettingType.MAGIC_HINTSET_ENUM_CATEGORICAL, 5
 
@@ -339,6 +341,12 @@ class CategoricalKnob(Discrete):
         return True
 
     def invert(self, val):
+        if self.knob_type == SettingType.SCANMETHOD_ENUM_CATEGORICAL:
+            # Coerce seq-scan and bitmap-scan together.
+            if val == 0. or val == 1.:
+                return 2
+            else:
+                return 0
         return val
 
     def __init__(

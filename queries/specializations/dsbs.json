@@ -1,0 +1,62 @@
+[
+        {
+                "name": "baseline",
+                "knobs": [],
+                "indexes": []
+        },
+        {
+                "name": "pgtune",
+                "knobs": [
+                        "shared_buffers = 8GB",
+                        "effective_cache_size = 24GB",
+                        "maintenance_work_mem = 2GB",
+                        "checkpoint_completion_target = 0.9",
+                        "wal_buffers = 16MB",
+                        "default_statistics_target = 500",
+                        "random_page_cost = 1.1",
+                        "effective_io_concurrency = 200",
+                        "work_mem = 10485kB",
+                        "min_wal_size = 4GB",
+                        "max_wal_size = 16GB",
+                        "max_worker_processes = 20",
+                        "max_parallel_workers_per_gather = 10",
+                        "max_parallel_workers = 20",
+                        "max_parallel_maintenance_workers = 4"
+                ],
+                "indexes": []
+        },
+        {
+                "name": "pgtune_dexter",
+                "knobs": [
+                        "shared_buffers = 8GB",
+                        "effective_cache_size = 24GB",
+                        "maintenance_work_mem = 2GB",
+                        "checkpoint_completion_target = 0.9",
+                        "wal_buffers = 16MB",
+                        "default_statistics_target = 500",
+                        "random_page_cost = 1.1",
+                        "effective_io_concurrency = 200",
+                        "work_mem = 10485kB",
+                        "min_wal_size = 4GB",
+                        "max_wal_size = 16GB",
+                        "max_worker_processes = 20",
+                        "max_parallel_workers_per_gather = 10",
+                        "max_parallel_workers = 20",
+                        "max_parallel_maintenance_workers = 4"
+                ],
+                "indexes": [
+                        "CREATE INDEX index0 ON catalog_returns (cr_returned_date_sk)",
+                        "CREATE INDEX index1 ON catalog_sales (cs_bill_customer_sk)",
+                        "CREATE INDEX index2 ON catalog_sales (cs_ship_customer_sk)",
+                        "CREATE INDEX index3 ON catalog_sales (cs_ship_date_sk)",
+                        "CREATE INDEX index4 ON catalog_sales (cs_sold_date_sk)",
+                        "CREATE INDEX index5 ON inventory (inv_item_sk)",
+                        "CREATE INDEX index6 ON store_returns (sr_cdemo_sk)",
+                        "CREATE INDEX index7 ON store_returns (sr_returned_date_sk)",
+                        "CREATE INDEX index8 ON store_sales (ss_customer_sk)",
+                        "CREATE INDEX index9 ON store_sales (ss_sold_date_sk)",
+                        "CREATE INDEX index10 ON web_returns (wr_returned_date_sk)",
+                        "CREATE INDEX index11 ON web_sales (ws_sold_date_sk)"
+                ]
+	}
+]

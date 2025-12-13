@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import re
 import logging
@@ -124,13 +125,18 @@ def _time_unit_to_us(str):
 
 
 # Parse a pg_setting field value.
-def _parse_field(type, value):
+def _parse_field(knob_name, type, value):
     if type == SettingType.BOOLEAN:
         return util.strtobool(value)
     elif type == SettingType.BINARY_ENUM:
-        if "off" in value.lower():
-            return False
-        return True
+        value = value.lower()
+        if knob_name == "huge_pages":
+            return False if "off" in value else True
+        elif knob_name == "io_method":
+            return False if "sync" in value else True
+        else:
+            assert knob_name == "wal_compression"
+            return False if "off" in value else True
     elif type == SettingType.INTEGER:
         return int(value)
     elif type == SettingType.BYTES:
@@ -162,9 +168,17 @@ def _parse_field(type, value):
 
 def _project_pg_setting(knob: Knob, setting: str):
     # logging.debug(f"Projecting {setting} into knob {knob.knob_name}")
-    value = _parse_field(knob.knob_type, setting)
+    value = _parse_field(knob.knob_name, knob.knob_type, setting)
     value = value if knob.knob_unit == 0 else value / knob.knob_unit
     return knob.project_scraped_setting(value)
+
+
+def fetch_class(connection):
+    with connection.cursor(row_factory=dict_row) as cursor:
+        cdf = pd.DataFrame([r for r in cursor.execute("SELECT * FROM pg_class WHERE relnamespace = 2200 and relkind = 'r' order by relname")])
+        sdf = pd.DataFrame([r for r in cursor.execute("select * from pg_stats where schemaname = 'public' order by tablename, attname")])
+        stdf = pd.DataFrame([r for r in cursor.execute("select * from pg_stat_all_tables where schemaname = 'public' order by relname")])
+    return (cdf, sdf, stdf)
 
 
 def fetch_server_knobs(connection, tables, knobs, workload=None):
@@ -201,8 +215,6 @@ def fetch_server_knobs(connection, tables, knobs, workload=None):
             # Set the default to inherit from the base knob setting.
             if knob.knob_name in knob_targets:
                 knob_targets[knobname] = knob_targets[knob.knob_name]
-            elif isinstance(knob, CategoricalKnob):
-                knob_targets[knobname] = knob.default_value
             elif knob.knob_name.endswith("_scanmethod"):
                 assert knob.knob_name.endswith("_scanmethod")
                 assert knob.query_name is not None
@@ -216,7 +228,11 @@ def fetch_server_knobs(connection, tables, knobs, workload=None):
                 if knob.query_name in q_ams:
                     alias = knob.knob_name.split("_scanmethod")[0]
                     if alias in q_ams[knob.query_name]:
-                        val = 1 if ("Index" in q_ams[knob.query_name][alias] or "Bitmap Index" in q_ams[knob.query_name][alias]) else 0
+                        qqams = q_ams[knob.query_name]
+                        if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                            val = 1 if ("Index" in qqams[alias] or "Bitmap" in qqams[alias]) else 0
+                        else:
+                            val = 1 if ("Bitmap" in qqams[alias]) else (2 if ("Index" in qqams[alias]) else 0)
                         knob_targets[knobname] = val
                         installed = True
 
@@ -224,7 +240,12 @@ def fetch_server_knobs(connection, tables, knobs, workload=None):
                             logging.debug(f"Regressing {knobname} from {q_ams[knob.query_name][alias]} to {val}")
 
                 if not installed:
-                    knob_targets[knobname] = 0.
+                    if knob.knob_type == SettingType.SCANMETHOD_ENUM:
+                        knob_targets[knobname] = 0.
+                    else:
+                        knob_targets[knobname] = 0
+            elif isinstance(knob, CategoricalKnob):
+                knob_targets[knobname] = knob.default_value
             elif knob.knob_type == SettingType.BOOLEAN:
                 knob_targets[knobname] = 1.
             elif knob.knob_name == "random_page_cost":

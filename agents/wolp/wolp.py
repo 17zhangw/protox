@@ -206,6 +206,7 @@ class Wolp(OffPolicyAlgorithm):
                     "knob_span": 0,
                     "index_num_samples": 1,
                     "index_subset": True,
+                    "index_workload_prune": False,
                 }
 
                 env_action, embed_action = self.policy.wolp_act(
@@ -305,7 +306,10 @@ class Wolp(OffPolicyAlgorithm):
                 if self.env.action_space.get_index_space().index_space_aux_type_dim > 0:
                     raw_actions = th.concat([embeds[:, :self.env.action_space.get_index_space().index_space_aux_type_dim], raw_actions], dim=1)
                 if self.env.action_space.get_index_space().index_space_aux_include > 0:
-                    raw_actions = th.concat([raw_actions, embeds[:, -is_aux_md-self.env.action_space.get_index_space().index_space_aux_include:-is_aux_md]], dim=1)
+                    if is_aux_md > 0:
+                        raw_actions = th.concat([raw_actions, embeds[:, -is_aux_md-self.env.action_space.get_index_space().index_space_aux_include:-is_aux_md]], dim=1)
+                    else:
+                        raw_actions = th.concat([raw_actions, embeds[:, -self.env.action_space.get_index_space().index_space_aux_include:]], dim=1)
                 if is_aux_md > 0:
                     raw_actions = th.concat([raw_actions, embeds[:, -is_aux_md:]], dim=1)
 

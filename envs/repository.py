@@ -26,7 +26,7 @@ class Repository(object):
         self.repository_path = repository_path
         self.action_space = action_space
 
-    def add(self, action, metric, reward, results, conf_path=None, prior_state=None):
+    def add(self, action, metric, reward, results, conf_path=None, prior_state=None, stattables=None):
         time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         local["mv"][results, f"{self.repository_path}/{time}"].run()
 
@@ -36,6 +36,12 @@ class Repository(object):
         if prior_state is not None:
             with open(f"{self.repository_path}/{time}/prior_state.txt", "w") as f:
                 f.write(str(prior_state))
+
+        if stattables is not None:
+            assert len(stattables) == 3
+            stattables[0].to_csv(f"{self.repository_path}/{time}/class.csv", index=False)
+            stattables[1].to_csv(f"{self.repository_path}/{time}/stats.csv", index=False)
+            stattables[2].to_csv(f"{self.repository_path}/{time}/pgstattables.csv", index=False)
 
         with open(f"{self.repository_path}/{time}/act_sql.txt", "w") as f:
             idx_space = self.action_space.get_index_space()
@@ -50,4 +56,4 @@ class Repository(object):
             for (knob, val) in knobs:
                 f.write(f"{knob} = {val}\n")
 
-        return reward
+        return reward, f"{self.repository_path}/{time}"

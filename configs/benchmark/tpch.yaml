@@ -8,6 +8,8 @@ mythril:
     early_workload_kill: True
     query_directory: "/home/wz2/mythril/queries/tpch"
     query_order: "/home/wz2/mythril/queries/tpch/order.txt"
+    execute_query_directory: "/home/wz2/mythril/queries/tpch"
+    execute_query_order: "/home/wz2/mythril/queries/tpch/order.txt"
     tbl_include_subsets_prune: True
 
   max_num_columns: 16
@@ -107,6 +109,7 @@ mythril:
   #     ...
   per_query_scan_method: True
   per_query_select_parallel: True
+  per_query_cte_materialize: True
   index_space_aux_type: True
   index_space_aux_include: True
   index_space_aux_brin: False
